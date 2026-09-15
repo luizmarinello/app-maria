@@ -11,7 +11,7 @@ computador (painel do Supabase).
 | `app/index.js` | Agenda do dia + calendário do mês + contadores |
 | `app/agendamento.js` | Criar/editar/concluir/excluir agendamento |
 | `app/clientes.js` | Clientes, telefone, observações e histórico |
-| `app/configuracoes.js` | Serviços (nome, duração, valor) e sair da conta |
+| `app/configuracoes.js` | Serviços (nome, duração, valor) |
 | `app/financeiro.js` | Faturamento por semana/mês/ano e por serviço |
 
 ## Passo 1 — criar o banco (uma vez, no computador)
@@ -19,9 +19,13 @@ computador (painel do Supabase).
 1. Crie uma conta grátis em https://supabase.com e um projeto novo (região: São Paulo).
 2. No menu **SQL Editor** → **New query** → cole todo o conteúdo de
    [`supabase/schema.sql`](supabase/schema.sql) → **Run**.
-3. Em **Authentication → Users → Add user**, crie o usuário que vai entrar no app
-   (e-mail + senha, marque "Auto confirm user"). É esse login que a Maria vai usar.
-4. Em **Project Settings → API**, copie a **Project URL** e a chave **anon public**.
+3. Em **Project Settings → API**, copie a **Project URL** e a chave **anon public**.
+
+O app **não tem login**: abre direto na agenda. O acesso ao banco é feito com a chave
+`anon`, liberada pelas políticas do `schema.sql`. Em troca da simplicidade, quem tiver a
+chave (ou o APK) consegue ler e escrever no banco — ok para um app pessoal que só fica no
+celular dela. Para proteger depois: trocar `to anon, authenticated` por `to authenticated`
+no `schema.sql`, criar o usuário em **Authentication → Users** e voltar uma tela de login.
 
 ## Passo 2 — configurar o projeto
 

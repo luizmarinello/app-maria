@@ -3,7 +3,6 @@ import { ActivityIndicator, Alert, Pressable, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Button, Card, Empty, Field, Header, Screen } from '../components/ui';
 import { listServices, removeService, saveService, useData } from '../lib/db';
-import { supabase } from '../lib/supabase';
 import { durationLabel } from '../lib/date';
 import { c, money } from '../lib/theme';
 
@@ -115,7 +114,6 @@ export default function Configuracoes() {
         ))
       )}
 
-      <Button label="Sair da conta" variant="ghost" onPress={() => supabase.auth.signOut()} />
     </Screen>
   );
 }

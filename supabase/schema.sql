@@ -33,7 +33,10 @@ create table if not exists appointments (
 create index if not exists appointments_starts_at_idx on appointments (starts_at);
 create index if not exists appointments_status_idx on appointments (status);
 
--- Segurança: só quem estiver logado (o seu usuário) lê ou escreve.
+-- App sem login: acesso liberado para a chave anon.
+-- Consequência: quem tiver a chave (ou o APK) lê e escreve tudo.
+-- Se um dia quiser proteger, troque "to anon, authenticated" por "to authenticated"
+-- e volte a tela de login (ver README).
 alter table services     enable row level security;
 alter table clients      enable row level security;
 alter table appointments enable row level security;
@@ -42,9 +45,9 @@ do $$
 declare t text;
 begin
   foreach t in array array['services','clients','appointments'] loop
-    execute format('drop policy if exists %I on %I', t||'_authenticated', t);
+    execute format('drop policy if exists %I on %I', t||'_open', t);
     execute format(
-      'create policy %I on %I for all to authenticated using (true) with check (true)',
-      t||'_authenticated', t);
+      'create policy %I on %I for all to anon, authenticated using (true) with check (true)',
+      t||'_open', t);
   end loop;
 end $$;
