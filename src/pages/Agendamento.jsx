@@ -1,11 +1,20 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { CheckCircle, Trash } from '@phosphor-icons/react';
+import { CheckCircle, Prohibit, Trash, WhatsappLogo } from '@phosphor-icons/react';
 import { Button, Field, NavBar, Notice, Pills, Skeleton } from '../components/ui';
 import { supabase } from '../lib/supabase';
-import { listClients, listServices, removeAppointment, saveAppointment, saveClient, setStatus } from '../lib/db';
-import { dayKey, durationLabel, hhmm } from '../lib/date';
-import { money } from '../lib/format';
+import {
+  listAppointments,
+  listClients,
+  listServices,
+  removeAppointment,
+  saveAppointment,
+  saveClient,
+  setStatus,
+} from '../lib/db';
+import { dayKey, durationLabel, endOfDay, hhmm, startOfDay } from '../lib/date';
+import { money, whatsapp } from '../lib/format';
+import { overlaps } from '../lib/report.mjs';
 
 export default function Agendamento() {
   const navigate = useNavigate();
@@ -15,6 +24,7 @@ export default function Agendamento() {
 
   const [services, setServices] = useState([]);
   const [clients, setClients] = useState([]);
+  const [doDia, setDoDia] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [erro, setErro] = useState(null);
@@ -62,6 +72,25 @@ export default function Agendamento() {
     })();
   }, [id]);
 
+  // O que já está marcado no dia escolhido, para ver horário livre e conflito.
+  useEffect(() => {
+    const d = new Date(`${form.date}T00:00`);
+    if (Number.isNaN(d.getTime())) return;
+    listAppointments(startOfDay(d), endOfDay(d))
+      .then((rows) => setDoDia(rows.filter((a) => a.id !== id)))
+      .catch(() => setDoDia([]));
+  }, [form.date, id]);
+
+  const inicio = new Date(`${form.date}T${form.time}`);
+  const fim = new Date(inicio.getTime() + form.duration * 60000);
+  const conflito = doDia.find((a) => {
+    const s = new Date(a.starts_at);
+    return overlaps(inicio, fim, s, new Date(s.getTime() + a.duration_min * 60000));
+  });
+
+  const clienteAtual = clients.find((c) => c.id === form.clientId);
+  const zap = whatsapp(clienteAtual?.phone);
+
   const pickService = (sid) => {
     const s = services.find((x) => x.id === sid);
     if (!s) return;
@@ -75,8 +104,7 @@ export default function Agendamento() {
     if (!name) return setErro('Informe o nome da cliente.');
     if (!form.serviceId) return setErro('Escolha um serviço.');
     if (!Number.isFinite(price) || price < 0) return setErro('Valor inválido.');
-    const when = new Date(`${form.date}T${form.time}`);
-    if (Number.isNaN(when.getTime())) return setErro('Data ou hora inválida.');
+    if (Number.isNaN(inicio.getTime())) return setErro('Data ou hora inválida.');
 
     setSaving(true);
     setErro(null);
@@ -92,7 +120,7 @@ export default function Agendamento() {
         client_name: name,
         service_id: form.serviceId,
         service_name: form.serviceName,
-        starts_at: when.toISOString(),
+        starts_at: inicio.toISOString(),
         duration_min: form.duration,
         price,
         status: form.status,
@@ -105,20 +133,20 @@ export default function Agendamento() {
     }
   };
 
-  const excluir = async () => {
-    if (!window.confirm('Excluir este agendamento? Não dá para desfazer.')) return;
+  const mudarStatus = async (status) => {
     try {
-      await removeAppointment(id);
+      await setStatus(id, status);
       navigate('/', { replace: true });
     } catch (e) {
       setErro(e.message);
     }
   };
 
-  const concluir = async () => {
+  const excluir = async () => {
+    if (!window.confirm('Excluir de vez? Some do histórico e do financeiro. Para só tirar da agenda, use Cancelar atendimento.')) return;
     try {
-      await setStatus(id, 'concluido');
-      set({ status: 'concluido' });
+      await removeAppointment(id);
+      navigate('/', { replace: true });
     } catch (e) {
       setErro(e.message);
     }
@@ -161,11 +189,19 @@ export default function Agendamento() {
                   />
                 </div>
               )}
+              {zap && (
+                <a className="group-row link-row" href={zap} target="_blank" rel="noreferrer">
+                  <WhatsappLogo size={20} weight="fill" />
+                  <span className="grow">Chamar {clienteAtual.name} no WhatsApp</span>
+                </a>
+              )}
             </div>
 
             <p className="group-title">Serviço</p>
             {services.length === 0 ? (
-              <Empty />
+              <p className="t-foot" style={{ margin: '0 4px' }}>
+                Nenhum serviço cadastrado. Vá em Ajustes para criar o primeiro.
+              </p>
             ) : (
               <Pills
                 options={services.map((s) => ({ value: s.id, label: s.name }))}
@@ -187,21 +223,54 @@ export default function Agendamento() {
               />
             </div>
             <p className="t-foot" style={{ margin: '0 4px' }}>
-              {durationLabel(form.duration)} · {money(String(form.price).replace(',', '.'))}
+              {hhmm(inicio)} às {hhmm(fim)} · {durationLabel(form.duration)} ·{' '}
+              {money(String(form.price).replace(',', '.'))}
             </p>
+
+            {conflito && (
+              <Notice tone="warn">
+                Conflita com {conflito.client_name} às {hhmm(new Date(conflito.starts_at))} (
+                {durationLabel(conflito.duration_min)}). Dá para salvar mesmo assim.
+              </Notice>
+            )}
+
+            {doDia.length > 0 && (
+              <div className="group quiet">
+                <p className="group-title" style={{ margin: 0, padding: '10px 16px 0' }}>
+                  Já marcado neste dia
+                </p>
+                {doDia.map((a) => (
+                  <div className="group-row" key={a.id} style={{ padding: '10px 16px' }}>
+                    <b className="t-num" style={{ width: 48 }}>{hhmm(new Date(a.starts_at))}</b>
+                    <span className="grow">{a.client_name}</span>
+                    <span className="t-foot">{durationLabel(a.duration_min)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </section>
 
           {erro && <Notice>{erro}</Notice>}
 
           {id && (
             <section className="stack">
-              {form.status !== 'concluido' && (
-                <Button type="button" variant="soft" icon={CheckCircle} onClick={concluir}>
-                  Marcar como concluído
+              {form.status === 'agendado' && (
+                <>
+                  <Button type="button" variant="soft" icon={CheckCircle} onClick={() => mudarStatus('concluido')}>
+                    Marcar como concluído
+                  </Button>
+                  <Button type="button" variant="quiet" icon={Prohibit} onClick={() => mudarStatus('cancelado')}>
+                    Cancelar atendimento
+                  </Button>
+                </>
+              )}
+              {form.status === 'cancelado' && (
+                <Button type="button" variant="soft" onClick={() => mudarStatus('agendado')}>
+                  Reativar atendimento
                 </Button>
               )}
               <Button type="button" variant="danger" icon={Trash} onClick={excluir}>
-                Excluir agendamento
+                Excluir de vez
               </Button>
             </section>
           )}
@@ -210,9 +279,3 @@ export default function Agendamento() {
     </form>
   );
 }
-
-const Empty = () => (
-  <p className="t-foot" style={{ margin: '0 4px' }}>
-    Nenhum serviço cadastrado. Vá em Ajustes para criar o primeiro.
-  </p>
-);

@@ -1,17 +1,24 @@
 import { useState } from 'react';
-import { CaretDown, PencilSimple, Plus, Trash } from '@phosphor-icons/react';
+import { CaretDown, PencilSimple, Phone, Plus, Trash, WhatsappLogo } from '@phosphor-icons/react';
 import { Button, Empty, Field, IconButton, Notice, PageHead, Skeleton } from '../components/ui';
-import { clientHistory, listClients, removeClient, saveClient, useData } from '../lib/db';
+import { clientHistory, completedVisits, listClients, removeClient, saveClient, useData } from '../lib/db';
 import { hhmm } from '../lib/date';
-import { money } from '../lib/format';
+import { money, tel, whatsapp } from '../lib/format';
+import { daysSince, lastVisits } from '../lib/report.mjs';
+
+// Manutenção costuma ser a cada 15 a 21 dias; acima disso vale chamar.
+const DIAS_PARA_CHAMAR = 25;
 
 export default function Clientes() {
   const { data, loading, error, reload } = useData(listClients, []);
+  const visitas = useData(completedVisits, []);
   const [edit, setEdit] = useState(null);
   const [busca, setBusca] = useState('');
   const [aberto, setAberto] = useState(null);
   const [historico, setHistorico] = useState({});
   const [erro, setErro] = useState(null);
+
+  const ultima = lastVisits(visitas.data);
 
   const salvar = async (e) => {
     e.preventDefault();
@@ -55,6 +62,7 @@ export default function Clientes() {
   };
 
   const lista = (data ?? []).filter((x) => x.name.toLowerCase().includes(busca.toLowerCase()));
+  const paraChamar = lista.filter((cl) => ultima[cl.id] && daysSince(ultima[cl.id]) >= DIAS_PARA_CHAMAR);
 
   return (
     <main className="screen">
@@ -79,12 +87,14 @@ export default function Clientes() {
             <Field
               label="Telefone"
               type="tel"
+              placeholder="(11) 98765-4321"
               value={edit.phone ?? ''}
               onChange={(e) => setEdit({ ...edit, phone: e.target.value })}
             />
             <Field
               label="Observações"
               textarea
+              placeholder="Alergias, preferências, formato de unha..."
               value={edit.notes ?? ''}
               onChange={(e) => setEdit({ ...edit, notes: e.target.value })}
             />
@@ -110,6 +120,14 @@ export default function Clientes() {
 
       {erro && <Notice>{erro}</Notice>}
 
+      {!busca && !edit && paraChamar.length > 0 && (
+        <Notice tone="info">
+          {paraChamar.length === 1
+            ? `${paraChamar[0].name} está há mais de ${DIAS_PARA_CHAMAR} dias sem vir.`
+            : `${paraChamar.length} clientes estão há mais de ${DIAS_PARA_CHAMAR} dias sem vir.`}
+        </Notice>
+      )}
+
       {loading && !data ? (
         <Skeleton rows={4} height={62} />
       ) : error ? (
@@ -120,72 +138,100 @@ export default function Clientes() {
         </Empty>
       ) : (
         <div className="group">
-          {lista.map((cl) => (
-            <div key={cl.id}>
-              <div className="group-row">
-                <button
-                  className="grow row"
-                  onClick={() => toggle(cl)}
-                  aria-expanded={aberto === cl.id}>
-                  <span className="avatar">{cl.name[0].toUpperCase()}</span>
-                  <span className="grow" style={{ textAlign: 'left' }}>
-                    <b style={{ display: 'block', letterSpacing: '-0.01em' }}>{cl.name}</b>
-                    {cl.phone && <span className="t-foot t-num">{cl.phone}</span>}
-                  </span>
-                  <CaretDown
-                    size={16}
-                    color="var(--text-3)"
-                    style={{
-                      transform: aberto === cl.id ? 'rotate(180deg)' : 'none',
-                      transition: 'transform 180ms var(--ease-out)',
-                    }}
-                  />
-                </button>
-              </div>
+          {lista.map((cl) => {
+            const dias = ultima[cl.id] ? daysSince(ultima[cl.id]) : null;
+            const chamar = dias !== null && dias >= DIAS_PARA_CHAMAR;
+            const zap = whatsapp(cl.phone);
+            const fone = tel(cl.phone);
 
-              {aberto === cl.id && (
-                <div className="group-row enter" style={{ display: 'block', background: 'var(--surface-2)' }}>
-                  {cl.notes && <p className="t-foot" style={{ margin: '0 0 8px' }}>{cl.notes}</p>}
-
-                  {!historico[cl.id] ? (
-                    <Skeleton rows={1} height={18} />
-                  ) : historico[cl.id].length === 0 ? (
-                    <p className="t-foot" style={{ margin: 0 }}>Sem atendimentos registrados</p>
-                  ) : (
-                    historico[cl.id].map((a) => {
-                      const d = new Date(a.starts_at);
-                      return (
-                        <div className="row t-foot" key={a.id} style={{ padding: '3px 0' }}>
-                          <span className="grow t-num">
-                            {d.toLocaleDateString('pt-BR')} {hhmm(d)} · {a.service_name}
-                          </span>
-                          <span
-                            className="t-num"
-                            style={{ color: a.status === 'concluido' ? 'var(--good)' : 'var(--text-3)' }}>
-                            {money(a.price)}
-                          </span>
-                        </div>
-                      );
-                    })
-                  )}
-
-                  <div className="row" style={{ marginTop: 12 }}>
-                    <IconButton
-                      icon={PencilSimple}
-                      label={`Editar ${cl.name}`}
-                      onClick={() => setEdit({ id: cl.id, name: cl.name, phone: cl.phone, notes: cl.notes })}
+            return (
+              <div key={cl.id}>
+                <div className="group-row">
+                  <button className="grow row" onClick={() => toggle(cl)} aria-expanded={aberto === cl.id}>
+                    <span className="avatar">{cl.name[0].toUpperCase()}</span>
+                    <span className="grow" style={{ textAlign: 'left' }}>
+                      <b style={{ display: 'block', letterSpacing: '-0.01em' }}>{cl.name}</b>
+                      <span className={`t-foot ${chamar ? 'warn' : ''}`}>
+                        {dias === null
+                          ? 'Sem atendimento ainda'
+                          : dias === 0
+                            ? 'Veio hoje'
+                            : dias === 1
+                              ? 'Veio ontem'
+                              : `Última visita há ${dias} dias`}
+                      </span>
+                    </span>
+                    <CaretDown
+                      size={16}
+                      color="var(--text-3)"
+                      style={{
+                        transform: aberto === cl.id ? 'rotate(180deg)' : 'none',
+                        transition: 'transform 180ms var(--ease-out)',
+                      }}
                     />
-                    <IconButton
-                      icon={Trash}
-                      variant="danger"
-                      label={`Remover ${cl.name}`}
-                      onClick={() => excluir(cl)}
-                    />
-                  </div>
+                  </button>
                 </div>
-              )}
-            </div>
-          ))}
+
+                {aberto === cl.id && (
+                  <div className="group-row enter detail">
+                    {cl.notes && <p className="t-foot" style={{ margin: '0 0 10px' }}>{cl.notes}</p>}
+
+                    {(zap || fone) && (
+                      <div className="row" style={{ marginBottom: 12 }}>
+                        {zap && (
+                          <a className="btn soft small" href={zap} target="_blank" rel="noreferrer">
+                            <WhatsappLogo size={18} weight="fill" /> WhatsApp
+                          </a>
+                        )}
+                        {fone && (
+                          <a className="btn soft small" href={fone}>
+                            <Phone size={18} weight="fill" /> Ligar
+                          </a>
+                        )}
+                      </div>
+                    )}
+
+                    {!historico[cl.id] ? (
+                      <Skeleton rows={1} height={18} />
+                    ) : historico[cl.id].length === 0 ? (
+                      <p className="t-foot" style={{ margin: 0 }}>Sem atendimentos registrados</p>
+                    ) : (
+                      historico[cl.id].map((a) => {
+                        const d = new Date(a.starts_at);
+                        return (
+                          <div className="row t-foot" key={a.id} style={{ padding: '3px 0' }}>
+                            <span className="grow t-num">
+                              {d.toLocaleDateString('pt-BR')} {hhmm(d)} · {a.service_name}
+                              {a.status === 'cancelado' && ' · cancelado'}
+                            </span>
+                            <span
+                              className="t-num"
+                              style={{ color: a.status === 'concluido' ? 'var(--good)' : 'var(--text-3)' }}>
+                              {money(a.price)}
+                            </span>
+                          </div>
+                        );
+                      })
+                    )}
+
+                    <div className="row" style={{ marginTop: 12 }}>
+                      <IconButton
+                        icon={PencilSimple}
+                        label={`Editar ${cl.name}`}
+                        onClick={() => setEdit({ id: cl.id, name: cl.name, phone: cl.phone, notes: cl.notes })}
+                      />
+                      <IconButton
+                        icon={Trash}
+                        variant="danger"
+                        label={`Remover ${cl.name}`}
+                        onClick={() => excluir(cl)}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </main>

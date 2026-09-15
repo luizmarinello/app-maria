@@ -89,3 +89,11 @@ export function useData(fetcher, deps = []) {
   useEffect(run, [run]);
   return { ...state, reload: run };
 }
+
+/** Concluídos de todos os tempos, só o necessário para calcular a última visita. */
+export const completedVisits = () =>
+  supabase
+    .from('appointments')
+    .select('client_id, starts_at, status')
+    .eq('status', 'concluido')
+    .then(ok);

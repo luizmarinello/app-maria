@@ -45,6 +45,12 @@ export default function Financeiro() {
             <Metric value={r.count} label="Atendimentos" />
             <Metric value={r.services} label="Serviços" />
           </div>
+          {r.pendingCount > 0 && (
+            <p className="t-foot" style={{ margin: '-8px 4px 0' }}>
+              Ainda por vir no período: {money(r.pending)} em {r.pendingCount}{' '}
+              {r.pendingCount === 1 ? 'agendamento' : 'agendamentos'}.
+            </p>
+          )}
 
           {r.byDay.length === 0 ? (
             <Empty title="Nada concluído no período">

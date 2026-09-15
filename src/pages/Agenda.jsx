@@ -1,16 +1,18 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CaretRight, Plus } from '@phosphor-icons/react';
+import { CaretRight, Check, Plus } from '@phosphor-icons/react';
 import Calendar from '../components/Calendar';
 import { Empty, IconButton, Metric, Notice, PageHead, Skeleton } from '../components/ui';
-import { counters, listAppointments, useData } from '../lib/db';
-import { dayKey, durationLabel, endOfMonth, hhmm, longDate, startOfMonth } from '../lib/date';
+import { counters, listAppointments, setStatus, useData } from '../lib/db';
+import { dayKey, durationLabel, endOfMonth, hhmm, longDate, sameDay, startOfMonth } from '../lib/date';
 import { money } from '../lib/format';
 
 export default function Agenda() {
   const navigate = useNavigate();
   const [month, setMonth] = useState(() => startOfMonth(new Date()));
   const [selected, setSelected] = useState(() => new Date());
+  const [expanded, setExpanded] = useState(false);
+  const [erro, setErro] = useState(null);
 
   const stats = useData(counters, []);
   const mes = useData(() => listAppointments(startOfMonth(month), endOfMonth(month)), [month.getTime()]);
@@ -19,6 +21,23 @@ export default function Agenda() {
   const marked = new Set(items.map((a) => dayKey(new Date(a.starts_at))));
   const selKey = dayKey(selected);
   const ofDay = items.filter((a) => dayKey(new Date(a.starts_at)) === selKey);
+  const isToday = sameDay(selected, new Date());
+
+  const concluir = async (a) => {
+    try {
+      await setStatus(a.id, 'concluido');
+      mes.reload();
+      stats.reload();
+    } catch (e) {
+      setErro(e.message);
+    }
+  };
+
+  const voltarHoje = () => {
+    const hoje = new Date();
+    setSelected(hoje);
+    setMonth(startOfMonth(hoje));
+  };
 
   return (
     <main className="screen">
@@ -43,15 +62,23 @@ export default function Agenda() {
         month={month}
         selected={selected}
         marked={marked}
+        expanded={expanded}
+        onToggle={() => setExpanded((v) => !v)}
         onSelect={setSelected}
-        onMonthChange={(m) => {
-          setMonth(m);
-          setSelected(m);
-        }}
+        onMonthChange={setMonth}
       />
 
       <section className="stack">
-        <h2 className="t-title">{longDate(selected)}</h2>
+        <div className="row">
+          <h2 className="t-title grow">{isToday ? 'Hoje' : longDate(selected)}</h2>
+          {!isToday && (
+            <button className="link" onClick={voltarHoje}>
+              Hoje
+            </button>
+          )}
+        </div>
+
+        {erro && <Notice>{erro}</Notice>}
 
         {mes.loading && !mes.data ? (
           <Skeleton rows={2} />
@@ -60,42 +87,49 @@ export default function Agenda() {
         ) : ofDay.length === 0 ? (
           <Empty title="Dia livre">Toque em + para marcar um atendimento.</Empty>
         ) : (
-          ofDay.map((a, i) => (
-            <Appointment
-              key={a.id}
-              a={a}
-              index={i}
-              onClick={() => navigate(`/agendamento/${a.id}`)}
-            />
-          ))
+          <div className="group">
+            {ofDay.map((a, i) => (
+              <Appointment
+                key={a.id}
+                a={a}
+                index={i}
+                onOpen={() => navigate(`/agendamento/${a.id}`)}
+                onDone={() => concluir(a)}
+              />
+            ))}
+          </div>
         )}
       </section>
     </main>
   );
 }
 
-function Appointment({ a, index, onClick }) {
+function Appointment({ a, index, onOpen, onDone }) {
   const done = a.status === 'concluido';
   const when = new Date(a.starts_at);
 
   return (
-    <button className="group enter" style={{ '--i': index }} onClick={onClick}>
-      <div className="group-row">
-        <span className="avatar">{a.client_name?.[0]?.toUpperCase()}</span>
-        <span className="grow">
-          <b style={{ display: 'block', letterSpacing: '-0.01em' }}>{a.client_name}</b>
-          <span className="t-foot">
-            {hhmm(when)} · {durationLabel(a.duration_min)} · {a.service_name}
-          </span>
+    <div className="group-row enter appt" style={{ '--i': index }}>
+      <button className="appt-time" onClick={onOpen}>
+        <b className="t-num">{hhmm(when)}</b>
+        <span className="t-foot">{durationLabel(a.duration_min)}</span>
+      </button>
+
+      <button className="grow appt-main" onClick={onOpen}>
+        <b>{a.client_name}</b>
+        <span className="t-foot">
+          {a.service_name} · {money(a.price)}
         </span>
-        <CaretRight size={16} color="var(--text-3)" />
-      </div>
-      <div className="group-row">
-        <span className={`tag ${done ? 'done' : 'todo'}`}>{done ? 'Concluído' : 'Agendado'}</span>
-        <b className="grow t-num" style={{ textAlign: 'right', letterSpacing: '-0.01em' }}>
-          {money(a.price)}
-        </b>
-      </div>
-    </button>
+      </button>
+
+      {done ? (
+        <span className="tag done">Concluído</span>
+      ) : (
+        <button className="icon-btn check" onClick={onDone} aria-label={`Concluir ${a.client_name}`}>
+          <Check size={18} weight="bold" />
+        </button>
+      )}
+      <CaretRight size={16} color="var(--text-3)" />
+    </div>
   );
 }

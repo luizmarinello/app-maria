@@ -117,4 +117,4 @@ export function Empty({ title, children }) {
   );
 }
 
-export const Notice = ({ children }) => <p className="notice">{children}</p>;
+export const Notice = ({ children, tone = 'error' }) => <p className={`notice ${tone}`}>{children}</p>;
