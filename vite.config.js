@@ -12,7 +12,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['icon.png', 'icon-maskable.png'],
+      includeAssets: ['icon.png', 'icon-maskable.png', 'apple-touch-icon.png', 'favicon.svg'],
       manifest: {
         name: 'Minha Agenda',
         short_name: 'Agenda',
@@ -22,8 +22,8 @@ export default defineConfig({
         scope: base,
         start_url: base,
         display: 'standalone',
-        background_color: '#f2f0ed',
-        theme_color: '#c97c8e',
+        background_color: '#fbf5f6',
+        theme_color: '#a8496a',
         icons: [
           { src: 'icon.png', sizes: '1024x1024', type: 'image/png', purpose: 'any' },
           { src: 'icon-maskable.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },

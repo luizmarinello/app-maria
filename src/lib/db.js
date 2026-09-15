@@ -64,7 +64,7 @@ export const counters = async () => {
     supabase.from('appointments').select('id', { count: 'exact', head: true }).eq('status', 'concluido'),
     supabase.from('appointments').select('id', { count: 'exact', head: true })
       .gte('starts_at', start.toISOString()).lt('starts_at', weekEnd.toISOString())
-      .neq('status', 'cancelado'),
+      .not('status', 'in', '("cancelado","bloqueio")'),
   ]);
   const err = hoje.error || concluidos.error || semana.error;
   if (err) throw new Error(err.message);

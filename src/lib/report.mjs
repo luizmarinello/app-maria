@@ -9,10 +9,14 @@ export function summarize(appointments) {
   const byDay = new Map();
 
   for (const a of done) {
-    const s = byService.get(a.service_name) ?? { name: a.service_name, total: 0, count: 0 };
-    s.total += Number(a.price || 0);
-    s.count += 1;
-    byService.set(a.service_name, s);
+    // Com vários serviços, cada item entra na sua própria linha do detalhamento.
+    const parts = Array.isArray(a.items) && a.items.length ? a.items : [{ name: a.service_name, price: a.price }];
+    for (const it of parts) {
+      const s = byService.get(it.name) ?? { name: it.name, total: 0, count: 0 };
+      s.total += Number(it.price || 0);
+      s.count += 1;
+      byService.set(it.name, s);
+    }
 
     const d = new Date(a.starts_at);
     const key = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
@@ -26,6 +30,7 @@ export function summarize(appointments) {
     count: done.length,
     ticket: done.length ? round2(total / done.length) : 0,
     services: byService.size,
+    // ponytail: "services" conta nomes distintos; se quiser contar itens, some byService[].count
     byService: [...byService.values()].map((s) => ({ ...s, total: round2(s.total) })).sort((a, b) => b.total - a.total),
     byDay: [...byDay.entries()].map(([day, total]) => ({ day, total: round2(total) })).sort((a, b) => a.day.localeCompare(b.day)),
   };

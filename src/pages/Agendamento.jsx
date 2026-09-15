@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ArrowClockwise, CheckCircle, Prohibit, Trash, WhatsappLogo } from '@phosphor-icons/react';
-import { Button, Field, NavBar, Notice, Pills, Skeleton } from '../components/ui';
+import { Button, Field, NavBar, Notice, Segmented, Skeleton } from '../components/ui';
 import { supabase } from '../lib/supabase';
 import {
   listAppointments,
@@ -12,9 +12,11 @@ import {
   saveClient,
   setStatus,
 } from '../lib/db';
-import { dayKey, durationLabel, endOfDay, hhmm, startOfDay } from '../lib/date';
+import { dayKey, durationLabel, endOfDay, hhmm, longDate, startOfDay } from '../lib/date';
 import { money, whatsapp } from '../lib/format';
 import { overlaps } from '../lib/report.mjs';
+
+const DURACOES_BLOQUEIO = [30, 60, 90, 120, 240, 480];
 
 export default function Agendamento() {
   const navigate = useNavigate();
@@ -30,18 +32,23 @@ export default function Agendamento() {
   const [erro, setErro] = useState(null);
 
   const vazio = () => ({
+    tipo: params.get('tipo') === 'bloqueio' ? 'bloqueio' : 'atendimento',
     clientName: '',
     clientId: null,
-    serviceId: null,
-    serviceName: '',
+    items: [], // serviços escolhidos: [{service_id, name, duration_min, price}]
+    motivo: '',
     date: params.get('data') || dayKey(new Date()),
-    time: '09:00',
-    duration: 60,
-    price: '0',
+    time: params.get('hora') || '09:00',
+    duration: 60, // usado no bloqueio; no atendimento vem da soma dos serviços
+    price: '0', // editável: a soma dos serviços é só o ponto de partida
     status: 'agendado',
   });
   const [form, setForm] = useState(vazio);
   const set = (patch) => setForm((f) => ({ ...f, ...patch }));
+
+  const bloqueio = form.tipo === 'bloqueio';
+  const duracao = bloqueio ? form.duration : form.items.reduce((s, it) => s + it.duration_min, 0) || 60;
+  const nomeServicos = form.items.map((it) => it.name).join(' + ');
 
   useEffect(() => {
     // A mesma tela serve para editar e para "novo" (via Remarcar), então zera antes de carregar.
@@ -53,14 +60,15 @@ export default function Agendamento() {
         setServices(srv);
         setClients(cli);
 
-        // Vindo de "Remarcar": cliente, serviço e hora já escolhidos.
+        // Vindo de "Remarcar": cliente e serviços já escolhidos.
         if (!id && params.get('cliente')) {
           const c = cli.find((x) => x.id === params.get('cliente'));
-          const sv = srv.find((x) => x.id === params.get('servico'));
+          const ids = (params.get('servicos') || '').split(',').filter(Boolean);
+          const items = ids.map((sid) => srv.find((x) => x.id === sid)).filter(Boolean).map(toItem);
           set({
             ...(c ? { clientId: c.id, clientName: c.name } : {}),
-            ...(sv ? { serviceId: sv.id, serviceName: sv.name, duration: sv.duration_min, price: String(sv.price) } : {}),
-            ...(params.get('hora') ? { time: params.get('hora') } : {}),
+            items,
+            price: String(items.reduce((s, it) => s + Number(it.price), 0)),
           });
         }
 
@@ -68,11 +76,18 @@ export default function Agendamento() {
           const { data, error } = await supabase.from('appointments').select('*').eq('id', id).single();
           if (error) throw new Error(error.message);
           const when = new Date(data.starts_at);
+          const items =
+            Array.isArray(data.items) && data.items.length
+              ? data.items
+              : data.service_id
+                ? [{ service_id: data.service_id, name: data.service_name, duration_min: data.duration_min, price: data.price }]
+                : [];
           set({
+            tipo: data.status === 'bloqueio' ? 'bloqueio' : 'atendimento',
             clientName: data.client_name,
             clientId: data.client_id,
-            serviceId: data.service_id,
-            serviceName: data.service_name,
+            items,
+            motivo: data.status === 'bloqueio' ? data.service_name : '',
             date: dayKey(when),
             time: hhmm(when),
             duration: data.duration_min,
@@ -98,7 +113,7 @@ export default function Agendamento() {
   }, [form.date, id]);
 
   const inicio = new Date(`${form.date}T${form.time}`);
-  const fim = new Date(inicio.getTime() + form.duration * 60000);
+  const fim = new Date(inicio.getTime() + duracao * 60000);
   const conflito = doDia.find((a) => {
     const s = new Date(a.starts_at);
     return overlaps(inicio, fim, s, new Date(s.getTime() + a.duration_min * 60000));
@@ -106,41 +121,63 @@ export default function Agendamento() {
 
   const clienteAtual = clients.find((c) => c.id === form.clientId);
   const zap = whatsapp(clienteAtual?.phone);
+  const lembrete = zap
+    ? `${zap}?text=${encodeURIComponent(
+        `Oi, ${form.clientName.split(' ')[0]}! Passando para lembrar do seu horário: ${longDate(inicio).toLowerCase()} às ${hhmm(inicio)}, ${nomeServicos || 'atendimento'}. Até lá! 💅`
+      )}`
+    : null;
 
-  const pickService = (sid) => {
-    const s = services.find((x) => x.id === sid);
-    if (!s) return;
-    set({ serviceId: s.id, serviceName: s.name, duration: s.duration_min, price: String(s.price) });
+  const toggleService = (s) => {
+    const has = form.items.some((it) => it.service_id === s.id);
+    const items = has ? form.items.filter((it) => it.service_id !== s.id) : [...form.items, toItem(s)];
+    set({ items, price: String(items.reduce((sum, it) => sum + Number(it.price), 0)) });
   };
 
   const salvar = async (e) => {
     e.preventDefault();
-    const name = form.clientName.trim();
     const price = Number(String(form.price).replace(',', '.'));
-    if (!name) return setErro('Informe o nome da cliente.');
-    if (!form.serviceId) return setErro('Escolha um serviço.');
-    if (!Number.isFinite(price) || price < 0) return setErro('Valor inválido.');
     if (Number.isNaN(inicio.getTime())) return setErro('Data ou hora inválida.');
 
     setSaving(true);
     setErro(null);
     try {
-      let clientId = form.clientId;
-      const known = clients.find((x) => x.name.toLowerCase() === name.toLowerCase());
-      if (!clientId && known) clientId = known.id;
-      if (!clientId) clientId = (await saveClient({ name })).id;
+      if (bloqueio) {
+        await saveAppointment({
+          ...(id ? { id } : {}),
+          client_id: null,
+          client_name: 'Bloqueio',
+          service_id: null,
+          service_name: form.motivo.trim() || 'Horário bloqueado',
+          items: null,
+          starts_at: inicio.toISOString(),
+          duration_min: form.duration,
+          price: 0,
+          status: 'bloqueio',
+        });
+      } else {
+        const name = form.clientName.trim();
+        if (!name) throw new Error('Informe o nome da cliente.');
+        if (form.items.length === 0) throw new Error('Escolha pelo menos um serviço.');
+        if (!Number.isFinite(price) || price < 0) throw new Error('Valor inválido.');
 
-      await saveAppointment({
-        ...(id ? { id } : {}),
-        client_id: clientId,
-        client_name: name,
-        service_id: form.serviceId,
-        service_name: form.serviceName,
-        starts_at: inicio.toISOString(),
-        duration_min: form.duration,
-        price,
-        status: form.status,
-      });
+        let clientId = form.clientId;
+        const known = clients.find((x) => x.name.toLowerCase() === name.toLowerCase());
+        if (!clientId && known) clientId = known.id;
+        if (!clientId) clientId = (await saveClient({ name })).id;
+
+        await saveAppointment({
+          ...(id ? { id } : {}),
+          client_id: clientId,
+          client_name: name,
+          service_id: form.items[0].service_id,
+          service_name: nomeServicos,
+          items: form.items,
+          starts_at: inicio.toISOString(),
+          duration_min: duracao,
+          price,
+          status: form.status === 'bloqueio' ? 'agendado' : form.status,
+        });
+      }
       navigate('/', { replace: true });
     } catch (e) {
       setErro(e.message);
@@ -165,13 +202,16 @@ export default function Agendamento() {
       data: dayKey(d),
       hora: form.time,
       ...(form.clientId ? { cliente: form.clientId } : {}),
-      ...(form.serviceId ? { servico: form.serviceId } : {}),
+      servicos: form.items.map((it) => it.service_id).join(','),
     });
     navigate(`/agendamento/novo?${q}`);
   };
 
   const excluir = async () => {
-    if (!window.confirm('Excluir de vez? Some do histórico e do financeiro. Para só tirar da agenda, use Cancelar atendimento.')) return;
+    const msg = bloqueio
+      ? 'Remover este bloqueio?'
+      : 'Excluir de vez? Some do histórico e do financeiro. Para só tirar da agenda, use Cancelar atendimento.';
+    if (!window.confirm(msg)) return;
     try {
       await removeAppointment(id);
       navigate('/', { replace: true });
@@ -185,80 +225,128 @@ export default function Agendamento() {
       ? clients.filter((x) => x.name.toLowerCase().includes(form.clientName.toLowerCase())).slice(0, 4)
       : [];
 
+  const titulo = id ? (bloqueio ? 'Bloqueio' : 'Agendamento') : bloqueio ? 'Bloquear horário' : 'Novo agendamento';
+
   return (
     <form className="screen modal" onSubmit={salvar}>
-      <NavBar
-        title={id ? 'Agendamento' : 'Novo agendamento'}
-        confirmLabel={saving ? 'Salvando' : 'Salvar'}
-        confirmDisabled={saving || loading}
-      />
+      <NavBar title={titulo} confirmLabel={saving ? 'Salvando' : 'Salvar'} confirmDisabled={saving || loading} />
 
       {loading ? (
         <Skeleton rows={2} height={120} />
       ) : (
         <>
-          <section className="stack">
-            <div className="group">
-              <Field
-                label="Cliente"
-                placeholder="Nome da cliente"
-                autoComplete="off"
-                value={form.clientName}
-                onChange={(e) => set({ clientName: e.target.value, clientId: null })}
-              />
-              {sugestoes.length > 0 && (
-                <div className="group-row" style={{ flexWrap: 'wrap' }}>
-                  <Pills
-                    options={sugestoes.map((s) => ({ value: s.id, label: s.name }))}
-                    value={form.clientId}
-                    onChange={(cid) =>
-                      set({ clientId: cid, clientName: sugestoes.find((s) => s.id === cid).name })
-                    }
-                  />
+          {!id && (
+            <Segmented
+              options={[
+                { value: 'atendimento', label: 'Atendimento' },
+                { value: 'bloqueio', label: 'Bloquear horário' },
+              ]}
+              value={form.tipo}
+              onChange={(tipo) => set({ tipo })}
+            />
+          )}
+
+          {bloqueio ? (
+            <section className="stack">
+              <div className="group">
+                <Field
+                  label="Motivo"
+                  placeholder="Almoço, folga, curso, médico..."
+                  value={form.motivo}
+                  onChange={(e) => set({ motivo: e.target.value })}
+                />
+              </div>
+              <p className="group-title">Duração</p>
+              <div className="pills">
+                {DURACOES_BLOQUEIO.map((m) => (
+                  <button
+                    key={m}
+                    type="button"
+                    className="pill"
+                    aria-pressed={form.duration === m}
+                    onClick={() => set({ duration: m })}>
+                    {durationLabel(m)}
+                  </button>
+                ))}
+              </div>
+            </section>
+          ) : (
+            <section className="stack">
+              <div className="group">
+                <Field
+                  label="Cliente"
+                  placeholder="Nome da cliente"
+                  autoComplete="off"
+                  value={form.clientName}
+                  onChange={(e) => set({ clientName: e.target.value, clientId: null })}
+                />
+                {sugestoes.length > 0 && (
+                  <div className="group-row pills" style={{ flexWrap: 'wrap' }}>
+                    {sugestoes.map((s) => (
+                      <button
+                        key={s.id}
+                        type="button"
+                        className="pill"
+                        onClick={() => set({ clientId: s.id, clientName: s.name })}>
+                        {s.name}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {lembrete && form.status === 'agendado' && (
+                  <a className="group-row link-row" href={lembrete} target="_blank" rel="noreferrer">
+                    <WhatsappLogo size={20} weight="fill" />
+                    <span className="grow">Enviar lembrete pelo WhatsApp</span>
+                  </a>
+                )}
+              </div>
+
+              <p className="group-title">Serviços {form.items.length > 1 && `· ${form.items.length} escolhidos`}</p>
+              {services.length === 0 ? (
+                <p className="t-foot" style={{ margin: '0 4px' }}>
+                  Nenhum serviço cadastrado. Vá em Ajustes para criar o primeiro.
+                </p>
+              ) : (
+                <div className="pills">
+                  {services.map((s) => (
+                    <button
+                      key={s.id}
+                      type="button"
+                      className="pill"
+                      aria-pressed={form.items.some((it) => it.service_id === s.id)}
+                      onClick={() => toggleService(s)}>
+                      {s.name}
+                    </button>
+                  ))}
                 </div>
               )}
-              {zap && (
-                <a className="group-row link-row" href={zap} target="_blank" rel="noreferrer">
-                  <WhatsappLogo size={20} weight="fill" />
-                  <span className="grow">Chamar {clienteAtual.name} no WhatsApp</span>
-                </a>
-              )}
-            </div>
-
-            <p className="group-title">Serviço</p>
-            {services.length === 0 ? (
-              <p className="t-foot" style={{ margin: '0 4px' }}>
-                Nenhum serviço cadastrado. Vá em Ajustes para criar o primeiro.
-              </p>
-            ) : (
-              <Pills
-                options={services.map((s) => ({ value: s.id, label: s.name }))}
-                value={form.serviceId}
-                onChange={pickService}
-              />
-            )}
-          </section>
+            </section>
+          )}
 
           <section className="stack">
             <div className="group">
               <Field label="Data" type="date" value={form.date} onChange={(e) => set({ date: e.target.value })} />
               <Field label="Hora" type="time" value={form.time} onChange={(e) => set({ time: e.target.value })} />
-              <Field
-                label="Valor"
-                inputMode="decimal"
-                value={form.price}
-                onChange={(e) => set({ price: e.target.value })}
-              />
+              {!bloqueio && (
+                <Field
+                  label="Valor"
+                  inputMode="decimal"
+                  value={form.price}
+                  onChange={(e) => set({ price: e.target.value })}
+                />
+              )}
             </div>
             <p className="t-foot" style={{ margin: '0 4px' }}>
-              {hhmm(inicio)} às {hhmm(fim)} · {durationLabel(form.duration)} ·{' '}
-              {money(String(form.price).replace(',', '.'))}
+              {hhmm(inicio)} às {hhmm(fim)} · {durationLabel(duracao)}
+              {!bloqueio && ` · ${money(String(form.price).replace(',', '.'))}`}
             </p>
 
             {conflito && (
               <Notice tone="warn">
-                Conflita com {conflito.client_name} às {hhmm(new Date(conflito.starts_at))} (
-                {durationLabel(conflito.duration_min)}). Dá para salvar mesmo assim.
+                {conflito.status === 'bloqueio'
+                  ? `Horário bloqueado: ${conflito.service_name} às ${hhmm(new Date(conflito.starts_at))}.`
+                  : `Conflita com ${conflito.client_name} às ${hhmm(new Date(conflito.starts_at))} (${durationLabel(conflito.duration_min)}).`}{' '}
+                Dá para salvar mesmo assim.
               </Notice>
             )}
 
@@ -270,7 +358,7 @@ export default function Agendamento() {
                 {doDia.map((a) => (
                   <div className="group-row" key={a.id} style={{ padding: '10px 16px' }}>
                     <b className="t-num" style={{ width: 48 }}>{hhmm(new Date(a.starts_at))}</b>
-                    <span className="grow">{a.client_name}</span>
+                    <span className="grow">{a.status === 'bloqueio' ? a.service_name : a.client_name}</span>
                     <span className="t-foot">{durationLabel(a.duration_min)}</span>
                   </div>
                 ))}
@@ -312,7 +400,7 @@ export default function Agendamento() {
                 </Button>
               )}
               <Button type="button" variant="danger" icon={Trash} onClick={excluir}>
-                Excluir de vez
+                {bloqueio ? 'Remover bloqueio' : 'Excluir de vez'}
               </Button>
             </section>
           )}
@@ -321,3 +409,5 @@ export default function Agendamento() {
     </form>
   );
 }
+
+const toItem = (s) => ({ service_id: s.id, name: s.name, duration_min: s.duration_min, price: Number(s.price) });

@@ -26,6 +26,19 @@ assert.deepEqual(r.byDay, [
   { day: '2026-09-14', total: 180 },
 ]);
 
+// vários serviços num atendimento: o total vem do preço do atendimento,
+// mas o detalhamento abre por item
+const multi = summarize([
+  { service_name: 'Manutenção + Spa dos pés', price: 160, status: 'concluido', starts_at: '2026-09-14T13:00:00',
+    items: [{ name: 'Manutenção', price: 90 }, { name: 'Spa dos pés', price: 70 }] },
+]);
+assert.equal(multi.total, 160);
+assert.equal(multi.count, 1);
+assert.deepEqual(multi.byService.map((s) => [s.name, s.total]), [['Manutenção', 90], ['Spa dos pés', 70]]);
+
+// bloqueios não entram em nada
+assert.equal(summarize([{ service_name: 'Almoço', price: 0, status: 'bloqueio', starts_at: '2026-09-14T12:00:00' }]).count, 0);
+
 // preço como string (vem assim do Postgres numeric)
 assert.equal(summarize([a('X', '99.50', 'concluido', '2026-09-01T10:00:00')]).total, 99.5);
 assert.equal(summarize([]).ticket, 0);

@@ -26,9 +26,16 @@ create table if not exists appointments (
   starts_at timestamptz not null,
   duration_min int not null default 60 check (duration_min > 0),
   price numeric(10,2) not null default 0 check (price >= 0),
-  status text not null default 'agendado' check (status in ('agendado','concluido','cancelado')),
+  status text not null default 'agendado' check (status in ('agendado','concluido','cancelado','bloqueio')),
+  items jsonb,                             -- vários serviços: [{service_id,name,duration_min,price}]
   created_at timestamptz not null default now()
 );
+
+-- Migração para bancos criados antes (seguro rodar de novo)
+alter table appointments drop constraint if exists appointments_status_check;
+alter table appointments add constraint appointments_status_check
+  check (status in ('agendado','concluido','cancelado','bloqueio'));
+alter table appointments add column if not exists items jsonb;
 
 create index if not exists appointments_starts_at_idx on appointments (starts_at);
 create index if not exists appointments_status_idx on appointments (status);

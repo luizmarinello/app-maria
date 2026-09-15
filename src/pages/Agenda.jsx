@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CalendarBlank, CalendarCheck, CaretRight, Check, Coffee, Plus, Sparkle } from '@phosphor-icons/react';
+import { CalendarBlank, CalendarCheck, CaretRight, Check, Coffee, Lock, Plus, Sparkle } from '@phosphor-icons/react';
 import Calendar from '../components/Calendar';
 import { Avatar, Empty, IconButton, Metric, Notice, PageHead, Skeleton } from '../components/ui';
 import { counters, listAppointments, setStatus, useData } from '../lib/db';
@@ -83,6 +83,12 @@ export default function Agenda() {
               Hoje
             </button>
           )}
+          <button
+            className="link"
+            onClick={() => navigate(`/agendamento/novo?tipo=bloqueio&data=${selKey}`)}
+            aria-label="Bloquear horário neste dia">
+            <Lock size={18} weight="bold" />
+          </button>
         </div>
 
         {erro && <Notice>{erro}</Notice>}
@@ -114,6 +120,25 @@ export default function Agenda() {
 function Appointment({ a, index, onOpen, onDone }) {
   const done = a.status === 'concluido';
   const when = new Date(a.starts_at);
+
+  if (a.status === 'bloqueio') {
+    return (
+      <button className="group-row enter appt block" style={{ '--i': index }} onClick={onOpen}>
+        <span className="appt-time">
+          <b className="t-num">{hhmm(when)}</b>
+          <span className="t-foot">{durationLabel(a.duration_min)}</span>
+        </span>
+        <span className="avatar" style={{ '--av-bg': 'var(--surface-2)', '--av-fg': 'var(--text-3)' }}>
+          <Lock size={18} weight="bold" />
+        </span>
+        <span className="grow appt-main">
+          <b>{a.service_name}</b>
+          <span className="t-foot">Horário bloqueado</span>
+        </span>
+        <CaretRight size={16} color="var(--text-3)" />
+      </button>
+    );
+  }
 
   return (
     <div className={`group-row enter appt ${done ? 'done' : ''}`} style={{ '--i': index }}>

@@ -710,6 +710,13 @@ button.group-row:active {
 .appt.done .appt-time b {
   color: var(--text-3);
 }
+.appt.block {
+  background: var(--surface-2);
+}
+.appt.block .appt-time b,
+.appt.block .appt-main b {
+  color: var(--text-2);
+}
 
 .link-row {
   color: var(--accent-ink);
