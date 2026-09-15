@@ -1,11 +1,16 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CaretRight, Check, Plus } from '@phosphor-icons/react';
+import { CalendarBlank, CalendarCheck, CaretRight, Check, Coffee, Plus, Sparkle } from '@phosphor-icons/react';
 import Calendar from '../components/Calendar';
-import { Empty, IconButton, Metric, Notice, PageHead, Skeleton } from '../components/ui';
+import { Avatar, Empty, IconButton, Metric, Notice, PageHead, Skeleton } from '../components/ui';
 import { counters, listAppointments, setStatus, useData } from '../lib/db';
 import { dayKey, durationLabel, endOfMonth, hhmm, longDate, sameDay, startOfMonth } from '../lib/date';
 import { money } from '../lib/format';
+
+const saudacao = () => {
+  const h = new Date().getHours();
+  return h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite';
+};
 
 export default function Agenda() {
   const navigate = useNavigate();
@@ -42,7 +47,9 @@ export default function Agenda() {
   return (
     <main className="screen">
       <PageHead
+        eyebrow={saudacao()}
         title="Sua agenda"
+        subtitle={longDate(new Date())}
         action={
           <IconButton
             icon={Plus}
@@ -53,9 +60,9 @@ export default function Agenda() {
       />
 
       <div className="metrics">
-        <Metric value={stats.data?.hoje ?? '–'} label="Hoje" />
-        <Metric value={stats.data?.concluidos ?? '–'} label="Concluídos" tone="good" />
-        <Metric value={stats.data?.semana ?? '–'} label="Esta semana" />
+        <Metric hero icon={CalendarBlank} value={stats.data?.hoje ?? '–'} label="Hoje" />
+        <Metric icon={CalendarCheck} value={stats.data?.concluidos ?? '–'} label="Concluídos" tone="good" />
+        <Metric icon={Sparkle} value={stats.data?.semana ?? '–'} label="Esta semana" />
       </div>
 
       <Calendar
@@ -85,7 +92,7 @@ export default function Agenda() {
         ) : mes.error ? (
           <Notice>{mes.error}</Notice>
         ) : ofDay.length === 0 ? (
-          <Empty title="Dia livre">Toque em + para marcar um atendimento.</Empty>
+          <Empty icon={Coffee} title="Dia livre">Toque em + para marcar um atendimento.</Empty>
         ) : (
           <div className="group">
             {ofDay.map((a, i) => (
@@ -109,12 +116,13 @@ function Appointment({ a, index, onOpen, onDone }) {
   const when = new Date(a.starts_at);
 
   return (
-    <div className="group-row enter appt" style={{ '--i': index }}>
+    <div className={`group-row enter appt ${done ? 'done' : ''}`} style={{ '--i': index }}>
       <button className="appt-time" onClick={onOpen}>
         <b className="t-num">{hhmm(when)}</b>
         <span className="t-foot">{durationLabel(a.duration_min)}</span>
       </button>
 
+      <Avatar name={a.client_name} />
       <button className="grow appt-main" onClick={onOpen}>
         <b>{a.client_name}</b>
         <span className="t-foot">

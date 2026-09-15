@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { CaretDown, PencilSimple, Phone, Plus, Trash, WhatsappLogo } from '@phosphor-icons/react';
-import { Button, Empty, Field, IconButton, Notice, PageHead, Skeleton } from '../components/ui';
+import { CaretDown, PencilSimple, Phone, Plus, Trash, UsersThree, WhatsappLogo } from '@phosphor-icons/react';
+import { Avatar, Button, Empty, Field, IconButton, Notice, PageHead, Skeleton } from '../components/ui';
 import { clientHistory, completedVisits, listClients, removeClient, saveClient, useData } from '../lib/db';
 import { hhmm } from '../lib/date';
 import { money, tel, whatsapp } from '../lib/format';
@@ -133,7 +133,7 @@ export default function Clientes() {
       ) : error ? (
         <Notice>{error}</Notice>
       ) : lista.length === 0 ? (
-        <Empty title="Nenhuma cliente encontrada">
+        <Empty icon={UsersThree} title="Nenhuma cliente encontrada">
           {busca ? 'Tente outro nome.' : 'Toque em + para cadastrar a primeira.'}
         </Empty>
       ) : (
@@ -148,7 +148,7 @@ export default function Clientes() {
               <div key={cl.id}>
                 <div className="group-row">
                   <button className="grow row" onClick={() => toggle(cl)} aria-expanded={aberto === cl.id}>
-                    <span className="avatar">{cl.name[0].toUpperCase()}</span>
+                    <Avatar name={cl.name} />
                     <span className="grow" style={{ textAlign: 'left' }}>
                       <b style={{ display: 'block', letterSpacing: '-0.01em' }}>{cl.name}</b>
                       <span className={`t-foot ${chamar ? 'warn' : ''}`}>
@@ -217,6 +217,7 @@ export default function Clientes() {
                     <div className="row" style={{ marginTop: 12 }}>
                       <IconButton
                         icon={PencilSimple}
+                        variant="soft"
                         label={`Editar ${cl.name}`}
                         onClick={() => setEdit({ id: cl.id, name: cl.name, phone: cl.phone, notes: cl.notes })}
                       />

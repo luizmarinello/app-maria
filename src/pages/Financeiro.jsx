@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Empty, Metric, Notice, PageHead, Segmented, Skeleton } from '../components/ui';
+import { ChartPieSlice, CurrencyDollar, Receipt, Scissors, TrendUp } from '@phosphor-icons/react';
+import { Empty, Metric, Notice, PageHead, Segmented, Skeleton, toneFor } from '../components/ui';
 import { listAppointments, useData } from '../lib/db';
 import { summarize } from '../lib/report.mjs';
 import { endOfMonth, endOfWeek, endOfYear, startOfMonth, startOfWeek, startOfYear } from '../lib/date';
@@ -38,12 +39,12 @@ export default function Financeiro() {
       ) : (
         <>
           <div className="metrics two">
-            <Metric money value={money(r.total)} label="Faturamento" tone="good" />
-            <Metric money value={money(r.ticket)} label="Ticket médio" />
+            <Metric hero money icon={CurrencyDollar} value={money(r.total)} label="Faturamento" tone="good" />
+            <Metric money icon={TrendUp} value={money(r.ticket)} label="Ticket médio" />
           </div>
           <div className="metrics two">
-            <Metric value={r.count} label="Atendimentos" />
-            <Metric value={r.services} label="Serviços" />
+            <Metric icon={Receipt} value={r.count} label="Atendimentos" />
+            <Metric icon={Scissors} value={r.services} label="Serviços" />
           </div>
           {r.pendingCount > 0 && (
             <p className="t-foot" style={{ margin: '-8px 4px 0' }}>
@@ -53,7 +54,7 @@ export default function Financeiro() {
           )}
 
           {r.byDay.length === 0 ? (
-            <Empty title="Nada concluído no período">
+            <Empty icon={ChartPieSlice} title="Nada concluído no período">
               Marque um atendimento como concluído para ele entrar aqui.
             </Empty>
           ) : (
@@ -82,6 +83,7 @@ export default function Financeiro() {
                 <div className="group">
                   {r.byService.map((s) => (
                     <div className="group-row" key={s.name}>
+                      <span className="swatch" style={{ background: toneFor(s.name)[1] }} />
                       <span className="grow">
                         <b style={{ display: 'block', letterSpacing: '-0.01em' }}>{s.name}</b>
                         <span className="t-foot">

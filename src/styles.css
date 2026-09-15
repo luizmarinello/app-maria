@@ -1,40 +1,43 @@
 /* =========================================================
-   Tokens
-   Uma paleta, um acento, uma escala de cantos.
+   Tokens — rosa suave sobre neutros quentes, um acento só
    ========================================================= */
 :root {
-  --bg: #f4f2ef;
+  --bg: #fbf5f6;
+  --bg-deep: #f7e6ea;
   --surface: #ffffff;
-  --surface-2: #faf8f7;
-  --surface-press: #f0ecea;
+  --surface-2: #fbf6f7;
+  --surface-press: #f5e9ec;
 
-  --text: #1f1b1a;
-  --text-2: #6e6663;
-  --text-3: #9a918d;
+  --text: #2a1f23;
+  --text-2: #7a6a70;
+  --text-3: #a8989e;
 
-  --accent: #a8496a; /* preenchimentos com texto branco: 5.4:1 */
-  --accent-ink: #9b3e5c; /* acento sobre superfície clara: 6.5:1 */
-  --accent-soft: #f8e9ee;
+  --accent: #a8496a; /* texto branco em cima: 5.4:1 */
+  --accent-2: #bf6482; /* topo do gradiente dos botões */
+  --accent-ink: #9b3e5c; /* acento em texto sobre branco: 6.5:1 */
+  --accent-soft: #fbe7ec;
+  --accent-soft-2: #f5d3dc;
+  --accent-glow: rgb(168 73 106 / 0.28);
 
-  --good: #1f7a52;
-  --good-soft: #e3f2ea;
+  --good: #2e8b62;
+  --good-soft: #e4f4ec;
   --bad: #b23b31;
-
-  --line: rgb(0 0 0 / 0.07);
-  --line-strong: rgb(0 0 0 / 0.13);
-
-  --chrome: rgb(244 242 239 / 0.78);
   --warn: #9a6b00;
   --warn-soft: #fbf1d6;
-  --info-soft: #eef1f7;
-  --shadow: 0 1px 2px rgb(31 27 26 / 0.04), 0 6px 20px rgb(31 27 26 / 0.04);
+  --info-soft: #f1ecf2;
 
-  /* cantos: cartões 18, controles 12, pílulas cheias */
-  --r-card: 18px;
-  --r-control: 12px;
+  --line: rgb(168 73 106 / 0.09);
+  --line-strong: rgb(168 73 106 / 0.18);
+
+  --chrome: rgb(251 245 246 / 0.8);
+  --shadow: 0 1px 2px rgb(168 73 106 / 0.05), 0 8px 24px rgb(168 73 106 / 0.07);
+  --shadow-lift: 0 2px 6px rgb(168 73 106 / 0.12), 0 12px 32px rgb(168 73 106 / 0.14);
+
+  /* cantos: cartões 20, controles 14, pílulas cheias */
+  --r-card: 20px;
+  --r-control: 14px;
 
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
-  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
 
   color-scheme: light;
 }
@@ -63,6 +66,19 @@ body {
   overscroll-behavior-y: contain;
 }
 
+/* Luz rosada no topo, fixa, sem custo de repaint no scroll */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0 0 auto;
+  height: 46vh;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(60% 55% at 18% 0%, var(--bg-deep) 0%, transparent 70%),
+    radial-gradient(45% 40% at 95% 10%, #fceef1 0%, transparent 70%);
+}
+
 button,
 input,
 textarea,
@@ -79,6 +95,10 @@ button {
   color: inherit;
 }
 
+a {
+  color: var(--accent-ink);
+}
+
 :focus-visible {
   outline: 2px solid var(--accent-ink);
   outline-offset: 2px;
@@ -86,25 +106,21 @@ button {
 }
 
 /* =========================================================
-   Tipografia — tracking específico por tamanho
+   Tipografia
    ========================================================= */
 .t-large {
-  font-size: 34px;
-  line-height: 1.08;
+  font-size: 32px;
+  line-height: 1.1;
   letter-spacing: -0.022em;
   font-weight: 700;
   margin: 0;
 }
 .t-title {
-  font-size: 22px;
+  font-size: 21px;
   line-height: 1.2;
   letter-spacing: -0.015em;
   font-weight: 700;
   margin: 0;
-}
-.t-body {
-  font-size: 17px;
-  letter-spacing: -0.008em;
 }
 .t-foot {
   font-size: 13px;
@@ -119,9 +135,6 @@ button {
 .muted {
   color: var(--text-2);
 }
-.faint {
-  color: var(--text-3);
-}
 
 /* =========================================================
    Estrutura
@@ -134,7 +147,6 @@ button {
   flex-direction: column;
   gap: 22px;
 }
-
 .screen.modal {
   padding-top: calc(env(safe-area-inset-top) + 64px);
 }
@@ -147,6 +159,12 @@ button {
 }
 .page-head p {
   margin: 4px 0 0;
+}
+.page-head .eyebrow {
+  margin: 0 0 4px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--accent-ink);
 }
 
 .stack {
@@ -164,7 +182,7 @@ button {
   min-width: 0;
 }
 
-/* Barra de navegação translúcida da tela modal */
+/* Barra da tela modal */
 .navbar {
   position: fixed;
   inset: 0 0 auto;
@@ -192,20 +210,20 @@ button {
 }
 .navbar button:last-child {
   text-align: right;
-  font-weight: 600;
+  font-weight: 700;
 }
 .navbar button:disabled {
   color: var(--text-3);
 }
 
-/* Barra de abas translúcida */
+/* Barra de abas */
 .tabbar {
   position: fixed;
   inset: auto 0 0;
   z-index: 20;
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  padding: 8px 8px calc(env(safe-area-inset-bottom) + 8px);
+  padding: 6px 8px calc(env(safe-area-inset-bottom) + 6px);
   background: var(--chrome);
   backdrop-filter: blur(20px) saturate(180%);
   -webkit-backdrop-filter: blur(20px) saturate(180%);
@@ -215,23 +233,35 @@ button {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 3px;
-  padding: 6px 0;
+  gap: 2px;
+  padding: 4px 0;
   text-decoration: none;
   color: var(--text-2);
   font-size: 11px;
-  letter-spacing: 0.005em;
+  font-weight: 500;
   transition: color 160ms var(--ease-out), transform 160ms var(--ease-out);
+}
+.tabbar a .pill {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 30px;
+  border-radius: 999px;
+  transition: background-color 200ms var(--ease-out);
 }
 .tabbar a[aria-current='page'] {
   color: var(--accent-ink);
+  font-weight: 600;
+}
+.tabbar a[aria-current='page'] .pill {
+  background: var(--accent-soft);
 }
 .tabbar a:active {
   transform: scale(0.94);
 }
 
 /* =========================================================
-   Superfícies e listas agrupadas (padrão iOS)
+   Superfícies
    ========================================================= */
 .card {
   background: var(--surface);
@@ -261,6 +291,13 @@ button {
 button.group-row:active {
   background: var(--surface-press);
 }
+.group.quiet {
+  background: var(--surface-2);
+  box-shadow: none;
+}
+.group.quiet .group-row {
+  background: transparent;
+}
 
 .group-title {
   margin: 0 0 8px 4px;
@@ -281,27 +318,46 @@ button.group-row:active {
   grid-template-columns: repeat(2, 1fr);
 }
 .metric {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
   background: var(--surface);
   border-radius: var(--r-card);
   box-shadow: var(--shadow);
-  padding: 14px 12px;
+  padding: 14px 10px 12px;
   text-align: center;
+}
+.metric .ico {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+}
+.metric .ico.good {
+  background: var(--good-soft);
+  color: var(--good);
 }
 .metric b {
   display: block;
-  font-size: 26px;
+  font-size: 24px;
   line-height: 1.1;
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
 }
 .metric.money b {
-  font-size: 21px;
+  font-size: 19px;
 }
 .metric span {
   display: block;
-  margin-top: 3px;
   font-size: 12px;
   color: var(--text-2);
+}
+.metric.hero {
+  background: linear-gradient(160deg, #fdf0f3 0%, #ffffff 65%);
 }
 
 /* =========================================================
@@ -315,52 +371,94 @@ button.group-row:active {
   width: 100%;
   padding: 15px 18px;
   border-radius: var(--r-control);
-  background: var(--accent);
+  background: linear-gradient(180deg, var(--accent-2), var(--accent));
   color: #fff;
   font-size: 17px;
   font-weight: 600;
   letter-spacing: -0.01em;
-  transition: transform 140ms var(--ease-out), opacity 140ms var(--ease-out);
+  box-shadow: 0 6px 18px var(--accent-glow);
+  text-decoration: none;
+  transition: transform 140ms var(--ease-out), opacity 140ms var(--ease-out), box-shadow 140ms var(--ease-out);
 }
 .btn:active {
   transform: scale(0.97);
+  box-shadow: 0 3px 10px var(--accent-glow);
 }
 .btn:disabled {
   opacity: 0.5;
   transform: none;
+  box-shadow: none;
 }
 .btn.soft {
   background: var(--accent-soft);
   color: var(--accent-ink);
+  box-shadow: none;
+}
+.btn.quiet {
+  background: var(--surface);
+  color: var(--text-2);
+  box-shadow: inset 0 0 0 1px var(--line-strong);
 }
 .btn.danger {
   background: transparent;
   color: var(--bad);
   box-shadow: inset 0 0 0 1px var(--line-strong);
 }
+.btn.small {
+  width: auto;
+  padding: 10px 14px;
+  font-size: 15px;
+}
 
 .icon-btn {
   display: grid;
   place-items: center;
-  width: 40px;
-  height: 40px;
+  width: 42px;
+  height: 42px;
   flex: none;
   border-radius: 50%;
-  color: var(--accent-ink);
-  background: var(--accent-soft);
+  color: #fff;
+  background: linear-gradient(180deg, var(--accent-2), var(--accent));
+  box-shadow: 0 6px 16px var(--accent-glow);
   transition: transform 140ms var(--ease-out);
 }
 .icon-btn:active {
   transform: scale(0.92);
 }
+.icon-btn.soft {
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  box-shadow: none;
+  width: 38px;
+  height: 38px;
+}
 .icon-btn.plain {
   background: none;
+  box-shadow: none;
   width: 32px;
   height: 32px;
   color: var(--text-2);
 }
 .icon-btn.danger {
+  background: none;
+  box-shadow: none;
+  width: 38px;
+  height: 38px;
   color: var(--bad);
+}
+.icon-btn.check {
+  width: 36px;
+  height: 36px;
+  background: var(--good-soft);
+  color: var(--good);
+  box-shadow: none;
+}
+
+.link {
+  color: var(--accent-ink);
+  font-size: 15px;
+  font-weight: 600;
+  padding: 6px 4px;
 }
 
 /* Controle segmentado */
@@ -368,18 +466,17 @@ button.group-row:active {
   display: grid;
   grid-auto-flow: column;
   grid-auto-columns: 1fr;
-  gap: 2px;
-  padding: 2px;
-  border-radius: 10px;
-  background: var(--surface-2);
-  box-shadow: inset 0 0 0 1px var(--line);
+  gap: 3px;
+  padding: 3px;
+  border-radius: 12px;
+  background: var(--accent-soft);
 }
 .segmented button {
   padding: 8px 10px;
-  border-radius: 8px;
+  border-radius: 9px;
   font-size: 14px;
   font-weight: 600;
-  color: var(--text-2);
+  color: var(--accent-ink);
   transition: background-color 180ms var(--ease-out), color 180ms var(--ease-out),
     transform 140ms var(--ease-out);
 }
@@ -389,10 +486,10 @@ button.group-row:active {
 .segmented button[aria-pressed='true'] {
   background: var(--surface);
   color: var(--text);
-  box-shadow: var(--shadow);
+  box-shadow: 0 1px 3px rgb(168 73 106 / 0.12);
 }
 
-/* Pílulas de escolha (serviços, sugestões) */
+/* Pílulas */
 .pills {
   display: flex;
   flex-wrap: wrap;
@@ -401,8 +498,8 @@ button.group-row:active {
 .pill {
   padding: 9px 14px;
   border-radius: 999px;
-  background: var(--surface-2);
-  box-shadow: inset 0 0 0 1px var(--line);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--line-strong);
   font-size: 15px;
   font-weight: 500;
   transition: transform 140ms var(--ease-out), background-color 160ms var(--ease-out);
@@ -413,7 +510,7 @@ button.group-row:active {
 .pill[aria-pressed='true'] {
   background: var(--accent);
   color: #fff;
-  box-shadow: none;
+  box-shadow: 0 4px 12px var(--accent-glow);
 }
 
 /* Campos */
@@ -434,7 +531,7 @@ button.group-row:active {
   border: none;
   background: none;
   padding: 0;
-  font-size: 17px; /* 17px evita o zoom automático do Safari no foco */
+  font-size: 17px; /* 17px evita o zoom automático do Safari */
   letter-spacing: -0.008em;
   resize: vertical;
 }
@@ -451,13 +548,12 @@ button.group-row:active {
   font-size: 13px;
 }
 
-/* Etiquetas de estado */
+/* Etiquetas */
 .tag {
   padding: 4px 10px;
   border-radius: 999px;
   font-size: 12px;
   font-weight: 600;
-  letter-spacing: 0.005em;
   background: var(--surface-2);
   color: var(--text-2);
   white-space: nowrap;
@@ -471,6 +567,7 @@ button.group-row:active {
   color: var(--accent-ink);
 }
 
+/* Avatar com cor por nome */
 .avatar {
   display: grid;
   place-items: center;
@@ -478,29 +575,42 @@ button.group-row:active {
   height: 42px;
   flex: none;
   border-radius: 50%;
-  background: var(--accent-soft);
-  color: var(--accent-ink);
   font-size: 17px;
-  font-weight: 600;
+  font-weight: 700;
+  background: var(--av-bg, var(--accent-soft));
+  color: var(--av-fg, var(--accent-ink));
 }
 
 /* =========================================================
    Calendário
    ========================================================= */
 .cal {
-  padding: 14px 10px 8px;
+  padding: 12px 10px 8px;
 }
 .cal-head {
   display: flex;
   align-items: center;
   gap: 2px;
-  padding: 0 6px 10px;
+  padding: 0 4px 8px;
 }
-.cal-head b {
+.cal-title {
   flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border-radius: 10px;
   font-size: 17px;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: -0.01em;
+  text-align: left;
+}
+.cal-title svg {
+  color: var(--accent-ink);
+  transition: transform 200ms var(--ease-out);
+}
+.cal-title:active {
+  background: var(--surface-press);
 }
 .cal-grid {
   display: grid;
@@ -533,7 +643,8 @@ button.group-row:active {
   font-style: normal;
   font-size: 16px;
   font-variant-numeric: tabular-nums;
-  transition: background-color 180ms var(--ease-out), color 180ms var(--ease-out);
+  transition: background-color 180ms var(--ease-out), color 180ms var(--ease-out),
+    box-shadow 180ms var(--ease-out);
 }
 .cal-day.outside i {
   color: var(--text-3);
@@ -542,11 +653,13 @@ button.group-row:active {
 .cal-day.today i {
   color: var(--accent-ink);
   font-weight: 700;
+  box-shadow: inset 0 0 0 1.5px var(--accent-soft-2);
 }
 .cal-day.sel i {
-  background: var(--accent);
+  background: linear-gradient(180deg, var(--accent-2), var(--accent));
   color: #fff;
-  font-weight: 600;
+  font-weight: 700;
+  box-shadow: 0 6px 14px var(--accent-glow);
 }
 .cal-day u {
   width: 5px;
@@ -555,7 +668,61 @@ button.group-row:active {
   background: transparent;
 }
 .cal-day.marked:not(.sel) u {
-  background: var(--accent-ink);
+  background: var(--accent-2);
+}
+
+/* =========================================================
+   Agenda: linha de atendimento
+   ========================================================= */
+.appt {
+  padding: 12px 12px 12px 14px;
+  gap: 12px;
+}
+.appt-time {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  width: 52px;
+  flex: none;
+  text-align: left;
+}
+.appt-time b {
+  font-size: 17px;
+  letter-spacing: -0.01em;
+  color: var(--accent-ink);
+}
+.appt-main {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  text-align: left;
+  min-width: 0;
+}
+.appt-main b {
+  letter-spacing: -0.01em;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.appt.done .appt-time b {
+  color: var(--text-3);
+}
+
+.link-row {
+  color: var(--accent-ink);
+  text-decoration: none;
+  font-weight: 500;
+}
+.link-row:active {
+  background: var(--surface-press);
+}
+
+.detail {
+  display: block;
+  background: var(--surface-2);
 }
 
 /* =========================================================
@@ -579,8 +746,8 @@ button.group-row:active {
   display: block;
   width: 100%;
   min-height: 3px;
-  border-radius: 3px;
-  background: var(--accent);
+  border-radius: 4px;
+  background: linear-gradient(180deg, var(--accent-2), var(--accent));
   transform-origin: bottom;
   animation: grow 420ms var(--ease-out) backwards;
 }
@@ -595,8 +762,15 @@ button.group-row:active {
   }
 }
 
+.swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex: none;
+}
+
 /* =========================================================
-   Estados: carregando, vazio, erro
+   Estados
    ========================================================= */
 .skeleton {
   border-radius: var(--r-card);
@@ -611,15 +785,27 @@ button.group-row:active {
 }
 
 .empty {
-  padding: 36px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 28px 20px 30px;
   text-align: center;
   color: var(--text-2);
 }
+.empty .ico {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  margin-bottom: 6px;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+}
 .empty b {
-  display: block;
   color: var(--text);
   font-size: 17px;
-  margin-bottom: 4px;
 }
 
 .notice {
@@ -629,125 +815,8 @@ button.group-row:active {
   box-shadow: inset 0 0 0 1px var(--line-strong);
   color: var(--bad);
   font-size: 15px;
+  margin: 0;
 }
-
-/* =========================================================
-   Entrada em cascata dos itens de lista
-   ========================================================= */
-.enter {
-  animation: enter 300ms var(--ease-out) backwards;
-  animation-delay: calc(var(--i, 0) * 45ms);
-}
-@keyframes enter {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-}
-
-/* =========================================================
-   Peças novas: agenda, calendário recolhível, avisos
-   ========================================================= */
-.link {
-  color: var(--accent-ink);
-  font-size: 15px;
-  font-weight: 600;
-  padding: 6px 4px;
-}
-
-.cal-title {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 6px;
-  border-radius: 8px;
-  font-size: 17px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  text-align: left;
-}
-.cal-title svg {
-  color: var(--text-3);
-  transition: transform 200ms var(--ease-out);
-}
-.cal-title:active {
-  background: var(--surface-press);
-}
-
-.appt {
-  padding: 12px 12px 12px 16px;
-  gap: 12px;
-}
-.appt-time {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 1px;
-  width: 52px;
-  flex: none;
-  text-align: left;
-}
-.appt-time b {
-  font-size: 17px;
-  letter-spacing: -0.01em;
-}
-.appt-main {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 1px;
-  text-align: left;
-  min-width: 0;
-}
-.appt-main b {
-  letter-spacing: -0.01em;
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.icon-btn.check {
-  width: 36px;
-  height: 36px;
-  background: var(--good-soft);
-  color: var(--good);
-}
-
-.btn.quiet {
-  background: transparent;
-  color: var(--text-2);
-  box-shadow: inset 0 0 0 1px var(--line-strong);
-}
-.btn.small {
-  width: auto;
-  padding: 10px 14px;
-  font-size: 15px;
-  text-decoration: none;
-}
-
-.link-row {
-  color: var(--accent-ink);
-  text-decoration: none;
-  font-weight: 500;
-}
-.link-row:active {
-  background: var(--surface-press);
-}
-
-.group.quiet {
-  background: var(--surface-2);
-  box-shadow: none;
-}
-.group.quiet .group-row {
-  background: transparent;
-}
-
-.detail {
-  display: block;
-  background: var(--surface-2);
-}
-
 .notice.warn {
   color: var(--warn);
   background: var(--warn-soft);
@@ -761,6 +830,39 @@ button.group-row:active {
 .t-foot.warn {
   color: var(--warn);
   font-weight: 500;
+}
+
+/* Entrada em cascata */
+.enter {
+  animation: enter 300ms var(--ease-out) backwards;
+  animation-delay: calc(var(--i, 0) * 45ms);
+}
+@keyframes enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+/* Tela de entrada */
+.welcome {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 6px;
+  padding-bottom: 8px;
+}
+.welcome .mark {
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  margin-bottom: 10px;
+  border-radius: 24px;
+  color: #fff;
+  background: linear-gradient(160deg, var(--accent-2), var(--accent));
+  box-shadow: var(--shadow-lift);
 }
 
 /* =========================================================
@@ -796,6 +898,6 @@ button.group-row:active {
   :root {
     --line: rgb(0 0 0 / 0.28);
     --line-strong: rgb(0 0 0 / 0.42);
-    --text-2: #4d4643;
+    --text-2: #4d4046;
   }
 }

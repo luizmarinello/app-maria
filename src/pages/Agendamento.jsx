@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { CheckCircle, Prohibit, Trash, WhatsappLogo } from '@phosphor-icons/react';
+import { ArrowClockwise, CheckCircle, Prohibit, Trash, WhatsappLogo } from '@phosphor-icons/react';
 import { Button, Field, NavBar, Notice, Pills, Skeleton } from '../components/ui';
 import { supabase } from '../lib/supabase';
 import {
@@ -29,7 +29,7 @@ export default function Agendamento() {
   const [saving, setSaving] = useState(false);
   const [erro, setErro] = useState(null);
 
-  const [form, setForm] = useState(() => ({
+  const vazio = () => ({
     clientName: '',
     clientId: null,
     serviceId: null,
@@ -39,15 +39,31 @@ export default function Agendamento() {
     duration: 60,
     price: '0',
     status: 'agendado',
-  }));
+  });
+  const [form, setForm] = useState(vazio);
   const set = (patch) => setForm((f) => ({ ...f, ...patch }));
 
   useEffect(() => {
+    // A mesma tela serve para editar e para "novo" (via Remarcar), então zera antes de carregar.
+    setForm(vazio());
+    setLoading(true);
     (async () => {
       try {
         const [srv, cli] = await Promise.all([listServices(), listClients()]);
         setServices(srv);
         setClients(cli);
+
+        // Vindo de "Remarcar": cliente, serviço e hora já escolhidos.
+        if (!id && params.get('cliente')) {
+          const c = cli.find((x) => x.id === params.get('cliente'));
+          const sv = srv.find((x) => x.id === params.get('servico'));
+          set({
+            ...(c ? { clientId: c.id, clientName: c.name } : {}),
+            ...(sv ? { serviceId: sv.id, serviceName: sv.name, duration: sv.duration_min, price: String(sv.price) } : {}),
+            ...(params.get('hora') ? { time: params.get('hora') } : {}),
+          });
+        }
+
         if (id) {
           const { data, error } = await supabase.from('appointments').select('*').eq('id', id).single();
           if (error) throw new Error(error.message);
@@ -140,6 +156,18 @@ export default function Agendamento() {
     } catch (e) {
       setErro(e.message);
     }
+  };
+
+  const remarcar = (dias) => {
+    const d = new Date(inicio);
+    d.setDate(d.getDate() + dias);
+    const q = new URLSearchParams({
+      data: dayKey(d),
+      hora: form.time,
+      ...(form.clientId ? { cliente: form.clientId } : {}),
+      ...(form.serviceId ? { servico: form.serviceId } : {}),
+    });
+    navigate(`/agendamento/novo?${q}`);
   };
 
   const excluir = async () => {
@@ -263,6 +291,20 @@ export default function Agendamento() {
                     Cancelar atendimento
                   </Button>
                 </>
+              )}
+              {form.status === 'concluido' && (
+                <div className="group quiet">
+                  <p className="group-title" style={{ margin: 0, padding: '12px 16px 0' }}>
+                    Remarcar {form.clientName.split(' ')[0]} para daqui a
+                  </p>
+                  <div className="row" style={{ padding: '10px 16px 14px' }}>
+                    {[15, 21, 30].map((d) => (
+                      <button key={d} type="button" className="btn soft small" onClick={() => remarcar(d)}>
+                        <ArrowClockwise size={16} weight="bold" /> {d} dias
+                      </button>
+                    ))}
+                  </div>
+                </div>
               )}
               {form.status === 'cancelado' && (
                 <Button type="button" variant="soft" onClick={() => mudarStatus('agendado')}>

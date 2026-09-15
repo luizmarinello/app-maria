@@ -19,7 +19,9 @@ export default function Tabs() {
           const active = pathname === to;
           return (
             <NavLink key={to} to={to} end>
-              <Icon size={24} weight={active ? 'fill' : 'regular'} />
+              <span className="pill">
+                <Icon size={23} weight={active ? 'fill' : 'regular'} />
+              </span>
               {label}
             </NavLink>
           );

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Sparkle } from '@phosphor-icons/react';
 import { supabase } from '../lib/supabase';
 import { Button, Field, Notice } from './ui';
 
@@ -22,9 +23,12 @@ export default function Entrar() {
 
   return (
     <form className="screen" onSubmit={entrar} style={{ justifyContent: 'center', minHeight: '100dvh' }}>
-      <div>
+      <div className="welcome">
+        <span className="mark">
+          <Sparkle size={34} weight="fill" />
+        </span>
         <h1 className="t-large">Sua agenda</h1>
-        <p className="t-foot">Entre uma vez. O aparelho fica lembrado.</p>
+        <p className="t-foot" style={{ margin: 0 }}>Entre uma vez. O aparelho fica lembrado.</p>
       </div>
 
       <div className="group">

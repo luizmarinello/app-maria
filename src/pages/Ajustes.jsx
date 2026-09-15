@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { PencilSimple, Plus, Trash } from '@phosphor-icons/react';
+import { PencilSimple, Plus, Scissors, Trash } from '@phosphor-icons/react';
 import { Button, Empty, Field, IconButton, Notice, PageHead, Skeleton } from '../components/ui';
 import { listServices, removeService, saveService, useData } from '../lib/db';
 import { supabase } from '../lib/supabase';
@@ -94,7 +94,7 @@ export default function Ajustes() {
       ) : error ? (
         <Notice>{error}</Notice>
       ) : data.length === 0 ? (
-        <Empty title="Nenhum serviço ainda">Toque em + para cadastrar o primeiro.</Empty>
+        <Empty icon={Scissors} title="Nenhum serviço ainda">Toque em + para cadastrar o primeiro.</Empty>
       ) : (
         <div className="group">
           {data.map((s) => (
@@ -107,6 +107,7 @@ export default function Ajustes() {
               </span>
               <IconButton
                 icon={PencilSimple}
+                variant="soft"
                 label={`Editar ${s.name}`}
                 onClick={() =>
                   setEdit({ id: s.id, name: s.name, duration: String(s.duration_min), price: String(s.price) })
