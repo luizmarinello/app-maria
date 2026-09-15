@@ -13,7 +13,8 @@ export const longDate = (d) =>
   d.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })
     .replace(/^./, (s) => s.toUpperCase());
 
-export const monthLabel = (d) => d.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+export const monthLabel = (d) =>
+  d.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }).replace(/^./, (s) => s.toUpperCase());
 
 export const startOfDay = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
 export const endOfDay = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
@@ -33,11 +34,13 @@ export const durationLabel = (min) => {
   return [h ? `${h}h` : null, m ? `${m}min` : null].filter(Boolean).join(' ') || '0min';
 };
 
-// grade do mês: 6 semanas x 7 dias, começando no domingo
+// grade do mês: semanas completas (5 ou 6 linhas), começando no domingo
 export const monthGrid = (ref) => {
   const first = startOfMonth(ref);
+  const diasNoMes = new Date(first.getFullYear(), first.getMonth() + 1, 0).getDate();
+  const semanas = Math.ceil((first.getDay() + diasNoMes) / 7);
   const start = new Date(first.getFullYear(), first.getMonth(), 1 - first.getDay());
-  return Array.from({ length: 42 }, (_, i) =>
+  return Array.from({ length: semanas * 7 }, (_, i) =>
     new Date(start.getFullYear(), start.getMonth(), start.getDate() + i)
   );
 };

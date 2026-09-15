@@ -46,6 +46,7 @@ declare t text;
 begin
   foreach t in array array['services','clients','appointments'] loop
     execute format('drop policy if exists %I on %I', t||'_open', t);
+    execute format('drop policy if exists %I on %I', t||'_authenticated', t);
     execute format(
       'create policy %I on %I for all to anon, authenticated using (true) with check (true)',
       t||'_open', t);

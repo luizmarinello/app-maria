@@ -1,0 +1,193 @@
+import { useState } from 'react';
+import { CaretDown, PencilSimple, Plus, Trash } from '@phosphor-icons/react';
+import { Button, Empty, Field, IconButton, Notice, PageHead, Skeleton } from '../components/ui';
+import { clientHistory, listClients, removeClient, saveClient, useData } from '../lib/db';
+import { hhmm } from '../lib/date';
+import { money } from '../lib/format';
+
+export default function Clientes() {
+  const { data, loading, error, reload } = useData(listClients, []);
+  const [edit, setEdit] = useState(null);
+  const [busca, setBusca] = useState('');
+  const [aberto, setAberto] = useState(null);
+  const [historico, setHistorico] = useState({});
+  const [erro, setErro] = useState(null);
+
+  const salvar = async (e) => {
+    e.preventDefault();
+    if (!edit.name.trim()) return setErro('Informe o nome.');
+    setErro(null);
+    try {
+      await saveClient({
+        ...(edit.id ? { id: edit.id } : {}),
+        name: edit.name.trim(),
+        phone: edit.phone?.trim() || null,
+        notes: edit.notes?.trim() || null,
+      });
+      setEdit(null);
+      reload();
+    } catch (e) {
+      setErro(e.message);
+    }
+  };
+
+  const excluir = async (cl) => {
+    if (!window.confirm(`Remover ${cl.name}? Os agendamentos ficam no histórico.`)) return;
+    try {
+      await removeClient(cl.id);
+      reload();
+    } catch (e) {
+      setErro(e.message);
+    }
+  };
+
+  const toggle = async (cl) => {
+    if (aberto === cl.id) return setAberto(null);
+    setAberto(cl.id);
+    if (!historico[cl.id]) {
+      try {
+        const rows = await clientHistory(cl.id);
+        setHistorico((h) => ({ ...h, [cl.id]: rows }));
+      } catch (e) {
+        setErro(e.message);
+      }
+    }
+  };
+
+  const lista = (data ?? []).filter((x) => x.name.toLowerCase().includes(busca.toLowerCase()));
+
+  return (
+    <main className="screen">
+      <PageHead
+        title="Clientes"
+        subtitle={`${data?.length ?? 0} cadastradas`}
+        action={
+          !edit && (
+            <IconButton
+              icon={Plus}
+              label="Nova cliente"
+              onClick={() => setEdit({ name: '', phone: '', notes: '' })}
+            />
+          )
+        }
+      />
+
+      {edit ? (
+        <form className="stack" onSubmit={salvar}>
+          <div className="group">
+            <Field label="Nome" value={edit.name} onChange={(e) => setEdit({ ...edit, name: e.target.value })} />
+            <Field
+              label="Telefone"
+              type="tel"
+              value={edit.phone ?? ''}
+              onChange={(e) => setEdit({ ...edit, phone: e.target.value })}
+            />
+            <Field
+              label="Observações"
+              textarea
+              value={edit.notes ?? ''}
+              onChange={(e) => setEdit({ ...edit, notes: e.target.value })}
+            />
+          </div>
+          <div className="row">
+            <Button type="button" variant="soft" onClick={() => setEdit(null)}>
+              Cancelar
+            </Button>
+            <Button type="submit">Salvar</Button>
+          </div>
+        </form>
+      ) : (
+        <div className="group">
+          <Field
+            label="Buscar"
+            placeholder="Nome da cliente"
+            type="search"
+            value={busca}
+            onChange={(e) => setBusca(e.target.value)}
+          />
+        </div>
+      )}
+
+      {erro && <Notice>{erro}</Notice>}
+
+      {loading && !data ? (
+        <Skeleton rows={4} height={62} />
+      ) : error ? (
+        <Notice>{error}</Notice>
+      ) : lista.length === 0 ? (
+        <Empty title="Nenhuma cliente encontrada">
+          {busca ? 'Tente outro nome.' : 'Toque em + para cadastrar a primeira.'}
+        </Empty>
+      ) : (
+        <div className="group">
+          {lista.map((cl) => (
+            <div key={cl.id}>
+              <div className="group-row">
+                <button
+                  className="grow row"
+                  onClick={() => toggle(cl)}
+                  aria-expanded={aberto === cl.id}>
+                  <span className="avatar">{cl.name[0].toUpperCase()}</span>
+                  <span className="grow" style={{ textAlign: 'left' }}>
+                    <b style={{ display: 'block', letterSpacing: '-0.01em' }}>{cl.name}</b>
+                    {cl.phone && <span className="t-foot t-num">{cl.phone}</span>}
+                  </span>
+                  <CaretDown
+                    size={16}
+                    color="var(--text-3)"
+                    style={{
+                      transform: aberto === cl.id ? 'rotate(180deg)' : 'none',
+                      transition: 'transform 180ms var(--ease-out)',
+                    }}
+                  />
+                </button>
+              </div>
+
+              {aberto === cl.id && (
+                <div className="group-row enter" style={{ display: 'block', background: 'var(--surface-2)' }}>
+                  {cl.notes && <p className="t-foot" style={{ margin: '0 0 8px' }}>{cl.notes}</p>}
+
+                  {!historico[cl.id] ? (
+                    <Skeleton rows={1} height={18} />
+                  ) : historico[cl.id].length === 0 ? (
+                    <p className="t-foot" style={{ margin: 0 }}>Sem atendimentos registrados</p>
+                  ) : (
+                    historico[cl.id].map((a) => {
+                      const d = new Date(a.starts_at);
+                      return (
+                        <div className="row t-foot" key={a.id} style={{ padding: '3px 0' }}>
+                          <span className="grow t-num">
+                            {d.toLocaleDateString('pt-BR')} {hhmm(d)} · {a.service_name}
+                          </span>
+                          <span
+                            className="t-num"
+                            style={{ color: a.status === 'concluido' ? 'var(--good)' : 'var(--text-3)' }}>
+                            {money(a.price)}
+                          </span>
+                        </div>
+                      );
+                    })
+                  )}
+
+                  <div className="row" style={{ marginTop: 12 }}>
+                    <IconButton
+                      icon={PencilSimple}
+                      label={`Editar ${cl.name}`}
+                      onClick={() => setEdit({ id: cl.id, name: cl.name, phone: cl.phone, notes: cl.notes })}
+                    />
+                    <IconButton
+                      icon={Trash}
+                      variant="danger"
+                      label={`Remover ${cl.name}`}
+                      onClick={() => excluir(cl)}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </main>
+  );
+}

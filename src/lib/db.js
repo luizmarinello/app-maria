@@ -1,5 +1,4 @@
-import { useCallback, useState } from 'react';
-import { useFocusEffect } from 'expo-router';
+import { useCallback, useEffect, useState } from 'react';
 import { supabase } from './supabase';
 
 const ok = ({ data, error }) => {
@@ -72,7 +71,7 @@ export const counters = async () => {
   return { hoje: hoje.count ?? 0, concluidos: concluidos.count ?? 0, semana: semana.count ?? 0 };
 };
 
-/** Busca dados ao abrir/voltar para a tela. */
+/** Busca dados ao abrir a tela; `reload()` refaz a busca. */
 export function useData(fetcher, deps = []) {
   const [state, setState] = useState({ data: null, loading: true, error: null });
 
@@ -82,9 +81,11 @@ export function useData(fetcher, deps = []) {
     Promise.resolve(fetcher())
       .then((data) => alive && setState({ data, loading: false, error: null }))
       .catch((e) => alive && setState({ data: null, loading: false, error: e.message }));
-    return () => { alive = false; };
+    return () => {
+      alive = false;
+    };
   }, deps); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useFocusEffect(run);
+  useEffect(run, [run]);
   return { ...state, reload: run };
 }

@@ -1,7 +1,5 @@
 node_modules/
-.expo/
 dist/
 .env
-*.apk
-android/
-ios/
+dev-dist/
+.expo/
