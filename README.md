@@ -25,13 +25,15 @@ abre como modal, com "Cancelar" e "Salvar" na barra do topo.
 1. Crie uma conta grátis em https://supabase.com e um projeto novo (região: São Paulo).
 2. No menu **SQL Editor** → **New query** → cole todo o conteúdo de
    [`supabase/schema.sql`](supabase/schema.sql) → **Run**.
-3. Em **Project Settings → API**, copie a **Project URL** e a **Publishable key**.
+3. Em **Authentication → Users → Add user**, crie o usuário dela (e-mail e senha, marque
+   "Auto confirm user"). É com ele que o app entra.
+4. Em **Project Settings → Data API**, copie a **Project URL**, e em **API Keys** a
+   **Publishable key**.
 
-O app **não tem login**: abre direto na agenda. O acesso ao banco é feito com a chave
-`anon`, liberada pelas políticas do `schema.sql`. Em troca da simplicidade, quem tiver a
-chave (ou o APK) consegue ler e escrever no banco — ok para um app pessoal que só fica no
-celular dela. Para proteger depois: trocar `to anon, authenticated` por `to authenticated`
-no `schema.sql`, criar o usuário em **Authentication → Users** e voltar uma tela de login.
+O app pede a senha **uma vez só**, na instalação. A sessão fica guardada no aparelho e se
+renova sozinha, então a tela de login não volta a aparecer. Isso é necessário porque a chave
+publishable fica visível no código do site (vale para qualquer hospedagem estática): sem
+login, qualquer pessoa com o endereço conseguiria ler nome e telefone das clientes.
 
 ## Passo 2 — configurar o projeto
 
@@ -41,9 +43,7 @@ Copie `.env.example` para `.env` e cole os dois valores do passo anterior:
 cp .env.example .env
 ```
 
-> O `.env` não vai para o Git. A chave publishable é pública por design: ela vai embutida no
-> app e qualquer pessoa com o link consegue lê-la. Quem controla o acesso são as políticas do
-> `schema.sql`, que hoje estão abertas de propósito (app sem login).
+> O `.env` não vai para o Git.
 
 ## Passo 3 — rodar localmente
 
@@ -51,14 +51,21 @@ cp .env.example .env
 npm run dev
 ```
 
-## Passo 4 — publicar e instalar no iPhone
+## Passo 4 — publicar no GitHub Pages
 
-Publique a pasta `dist` em qualquer hospedagem estática (Vercel, Netlify, Cloudflare Pages).
-As duas variáveis do `.env` precisam estar configuradas no painel da hospedagem também.
+1. Crie o repositório no GitHub e envie o código.
+2. Em **Settings → Secrets and variables → Actions → New repository secret**, crie os dois:
+   `VITE_SUPABASE_URL` e `VITE_SUPABASE_KEY`, com os mesmos valores do `.env`.
+3. Em **Settings → Pages → Build and deployment → Source**, escolha **GitHub Actions**.
+4. Pronto. Todo envio para `master` publica sozinho, pelo
+   [workflow](.github/workflows/deploy.yml). O endereço fica
+   `https://SEU-USUARIO.github.io/NOME-DO-REPO/`.
 
-```bash
-npm run build
-```
+Detalhes já resolvidos no projeto: o `BASE_PATH` do workflow ajusta o caminho do subdiretório,
+o `404.html` faz as rotas internas funcionarem (o Pages não reescreve URLs), e o manifesto do
+PWA acompanha o mesmo caminho.
+
+## Passo 5 — instalar no iPhone
 
 No iPhone: abra o link no **Safari** (precisa ser o Safari, não o Chrome), toque no botão
 Compartilhar e escolha **Adicionar à Tela de Início**. O app passa a abrir em tela cheia,
@@ -67,7 +74,7 @@ com ícone próprio e sem barra de navegador. No Android o Chrome oferece "Insta
 Atualizações são automáticas: ao publicar uma versão nova, o app pega sozinho na próxima
 abertura.
 
-## Passo 5 — mexer pelo computador
+## Passo 6 — mexer pelo computador
 
 No painel do Supabase, **Table Editor** mostra `services`, `clients` e `appointments`
 como planilhas: dá para cadastrar serviços, corrigir valores e conferir agendamentos

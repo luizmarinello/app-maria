@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { PencilSimple, Plus, Trash } from '@phosphor-icons/react';
 import { Button, Empty, Field, IconButton, Notice, PageHead, Skeleton } from '../components/ui';
 import { listServices, removeService, saveService, useData } from '../lib/db';
+import { supabase } from '../lib/supabase';
 import { durationLabel } from '../lib/date';
 import { money } from '../lib/format';
 
@@ -121,6 +122,10 @@ export default function Ajustes() {
           ))}
         </div>
       )}
+
+      <Button variant="soft" onClick={() => supabase.auth.signOut()}>
+        Sair da conta
+      </Button>
     </main>
   );
 }

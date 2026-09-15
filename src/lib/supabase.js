@@ -7,7 +7,7 @@ if (!url || !key) {
   throw new Error('Faltam VITE_SUPABASE_URL e VITE_SUPABASE_KEY no arquivo .env (copie de .env.example).');
 }
 
-// App sem login: usa a chave publishable direto (ver políticas em supabase/schema.sql).
+// A sessão fica no localStorage e renova sozinha: a senha é pedida uma vez só.
 export const supabase = createClient(url, key, {
-  auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+  auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false },
 });

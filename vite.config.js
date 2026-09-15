@@ -2,7 +2,12 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 
+// No GitHub Pages o site fica em usuario.github.io/<repo>/, então o workflow
+// define BASE_PATH. Em desenvolvimento e em hospedagens de raiz, fica '/'.
+const base = process.env.BASE_PATH || '/';
+
 export default defineConfig({
+  base,
   plugins: [
     react(),
     VitePWA({
@@ -13,15 +18,18 @@ export default defineConfig({
         short_name: 'Agenda',
         description: 'Agenda profissional: agendamentos, clientes e faturamento',
         lang: 'pt-BR',
-        start_url: '/',
+        id: base,
+        scope: base,
+        start_url: base,
         display: 'standalone',
-        background_color: '#EFEDEA',
-        theme_color: '#C97C8E',
+        background_color: '#f2f0ed',
+        theme_color: '#c97c8e',
         icons: [
           { src: 'icon.png', sizes: '1024x1024', type: 'image/png', purpose: 'any' },
           { src: 'icon-maskable.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
         ],
       },
+      workbox: { navigateFallback: `${base}index.html` },
     }),
   ],
 });
