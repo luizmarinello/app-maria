@@ -3,3 +3,4 @@ dist/
 .env
 dev-dist/
 .expo/
+supabase/.temp/

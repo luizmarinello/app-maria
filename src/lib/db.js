@@ -97,3 +97,10 @@ export const completedVisits = () =>
     .select('client_id, starts_at, status')
     .eq('status', 'concluido')
     .then(ok);
+
+/** Pede à Edge Function a URL webcal do calendário. Exige sessão logada. */
+export const calendarLink = async () => {
+  const { data, error } = await supabase.functions.invoke('calendario', { method: 'GET' });
+  if (error) throw new Error('Calendário ainda não configurado no servidor.');
+  return data;
+};

@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { PencilSimple, Plus, Scissors, Trash } from '@phosphor-icons/react';
+import { BellRinging, CalendarPlus, Copy, PencilSimple, Plus, Scissors, Trash } from '@phosphor-icons/react';
 import { Button, Empty, Field, IconButton, Notice, PageHead, Skeleton } from '../components/ui';
-import { listServices, removeService, saveService, useData } from '../lib/db';
+import { calendarLink, listServices, removeService, saveService, useData } from '../lib/db';
 import { supabase } from '../lib/supabase';
 import { durationLabel } from '../lib/date';
 import { money } from '../lib/format';
@@ -12,6 +12,28 @@ export default function Ajustes() {
   const { data, loading, error, reload } = useData(listServices, []);
   const [edit, setEdit] = useState(null);
   const [erro, setErro] = useState(null);
+  const [cal, setCal] = useState({ busy: false, link: null, copied: false });
+
+  const abrirCalendario = async () => {
+    setCal({ busy: true, link: null, copied: false });
+    try {
+      const { url, https } = await calendarLink();
+      setCal({ busy: false, link: { url, https }, copied: false });
+      window.location.href = url; // webcal:// abre o Calendário do iPhone
+    } catch (e) {
+      setCal({ busy: false, link: null, copied: false });
+      setErro(e.message);
+    }
+  };
+
+  const copiar = async () => {
+    try {
+      await navigator.clipboard.writeText(cal.link.https);
+      setCal((c) => ({ ...c, copied: true }));
+    } catch {
+      setErro('Não deu para copiar. Segure no link para copiar manualmente.');
+    }
+  };
 
   const salvar = async (e) => {
     e.preventDefault();
@@ -123,6 +145,39 @@ export default function Ajustes() {
           ))}
         </div>
       )}
+
+      <section className="stack">
+        <p className="group-title">Lembretes</p>
+        <div className="group">
+          <div className="group-row" style={{ alignItems: 'flex-start' }}>
+            <span className="icon-btn soft" style={{ flex: 'none' }}>
+              <BellRinging size={20} weight="fill" />
+            </span>
+            <span className="grow">
+              <b style={{ display: 'block', letterSpacing: '-0.01em' }}>Avisos no Calendário do iPhone</b>
+              <span className="t-foot">
+                Seus atendimentos aparecem no app Calendário, com alerta 30 minutos antes. Adicione uma vez;
+                depois atualiza sozinho.
+              </span>
+            </span>
+          </div>
+          <button className="group-row link-row" onClick={abrirCalendario} disabled={cal.busy}>
+            <CalendarPlus size={20} weight="fill" />
+            <span className="grow">{cal.busy ? 'Preparando…' : 'Adicionar ao Calendário'}</span>
+          </button>
+          {cal.link && (
+            <button className="group-row link-row" onClick={copiar}>
+              <Copy size={20} />
+              <span className="grow">{cal.copied ? 'Link copiado' : 'Copiar link (se não abriu sozinho)'}</span>
+            </button>
+          )}
+        </div>
+        {cal.link && (
+          <p className="t-foot" style={{ margin: '0 4px' }}>
+            Trate esse link como uma senha: quem tiver ele consegue ver a agenda.
+          </p>
+        )}
+      </section>
 
       <Button variant="soft" onClick={() => supabase.auth.signOut()}>
         Sair da conta
